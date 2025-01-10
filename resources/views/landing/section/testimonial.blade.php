@@ -1,11 +1,10 @@
 <!--start testimonials-->
 <section class="section testimonials" id="testimonials">
     <div class="container">
-        <div class="row align-items-center justify-content-between">
-            <div class="col-lg-12">
-                <div class="text-center mb-5">
-                    <h3 class="heading"><span class="text-primary">Testimonials</span></h3>
-                    <p>Testimoni dari para jamaah yang telah menggunakan layanan kami.</p>
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div class="d-flex align-items-center gap-2">
+                <div>
+                    <h5 class="mb-0">Testimoni</h5>
                 </div>
             </div>
         </div>

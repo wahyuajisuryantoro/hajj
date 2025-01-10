@@ -3,8 +3,8 @@
     <div class="container">
         <!-- LOGO -->
         <a class="navbar-brand text-uppercase" href="index-1.html">
-            <img class="logo-light" src="{{ asset('images/logo-hajj.png')}}" alt="" height="50">
-            <img class="logo-dark" src="{{ asset('images/logo-hajj.png')}}" alt="" height="50">
+            <img class="logo-light" src="{{ asset('images/logoap.png')}}" alt="" height="50">
+            <img class="logo-dark" src="{{ asset('images/logoap.png')}}" alt="" height="50">
         </a>
 
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse"

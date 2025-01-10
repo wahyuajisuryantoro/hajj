@@ -115,27 +115,29 @@ try {
 
 // home-1 slider
 var swiper = new Swiper(".mySwiper1", {
+  slidesPerView: "auto",
   spaceBetween: 15,
   loop: true,
-  loopFillGroupWithBlank: true,
-  pagination: {
-    el: ".swiper-pagination",
-    clickable: true,
-  },
+  centeredSlides: false,
   navigation: {
-    nextEl: ".swiper-button-next",
-    prevEl: ".swiper-button-prev",
+      nextEl: ".swiper-button-next",
+      prevEl: ".swiper-button-prev",
   },
   breakpoints: {
-    00: {
-      slidesPerView: 1
-    },
-    768: {
-      slidesPerView: 2
-    },
+      320: {
+          slidesPerView: 1.2,
+          spaceBetween: 15
+      },
+      768: {
+          slidesPerView: 2.2,
+          spaceBetween: 20
+      },
+      1024: {
+          slidesPerView: 3.2,
+          spaceBetween: 25
+      }
   }
 });
-
 
 // Animaten js
 

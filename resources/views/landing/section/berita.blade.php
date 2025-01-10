@@ -1,39 +1,38 @@
-<!-- start news slider -->
-<section class="section news-slider" id="berita">
+<!-- start news list -->
+<section class="section news-list" id="berita">
     <div class="container">
-        <div class="row justify-content-center">
-            <div class="col-lg-12">
-                <div class="text-center mb-5">
-                    <h3 class="heading mb-3">Berita <span class="text-primary">Terkini</span></h3>
-                    <p class="text-muted mb-0">Berikut adalah berita terbaru dari kami.</p>
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div class="d-flex align-items-center gap-2">
+                <div>
+                    <h5 class="mb-0">Berita</h5>
+                    <small class="text-muted">Daftar Berita Kami</small>
                 </div>
             </div>
         </div>
-        <!-- Swiper slider -->
-        <div class="row">
-            <div class="col-lg-12">
-                <div class="swiper mySwiper1">
-                    <div class="swiper-wrapper">
-                        @foreach($news as $item)
-                        <div class="swiper-slide">
-                            <div class="team-member">
-                                <div class="team-img">
-                                    <img src="{{ $item->picture ?: asset('images/default-news.jpg') }}" alt="{{ $item->name }}" class="img-fluid">
-                                </div>
-                                <div class="team-hover">
-                                    <div class="desk">
-                                        <h4>{{ $item->name }}</h4>
-                                        <p>{{ \Illuminate\Support\Str::limit($item->content, 100) }}</p>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                        </div>
-                        @endforeach
+        <div class="list-group mb-4">
+            @forelse($news as $item)
+            <a href="#" class="list-group-item list-group-item-action border-0 mb-3">
+                <div class="d-flex">
+                    <div class="flex-shrink-0">
+                        <img src="{{ $item->picture ?: asset('images/default-news.jpg') }}" 
+                             alt="{{ $item->name }}" 
+                             class="rounded"
+                             style="width: 100px; height: 70px; object-fit: cover;">
+                    </div>
+                    <div class="flex-grow-1 ms-3">
+                        <h6 class="mb-1">{{ $item->name }}</h6>
+                        <small class="text-muted">
+                            {{ \Carbon\Carbon::parse($item->created_at)->format('l, d F Y H:i') }}
+                        </small>
                     </div>
                 </div>
+            </a>
+            @empty
+            <div class="text-center py-4">
+                <p class="text-muted">Tidak ada berita tersedia</p>
             </div>
+            @endforelse
         </div>
     </div>
 </section>
-<!-- end news slider -->
+<!-- end news list -->
