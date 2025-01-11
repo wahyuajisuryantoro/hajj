@@ -63,15 +63,16 @@
                 <div class="card p-md-7 p-1">
                     <!-- Logo -->
                     <div class="app-brand justify-content-center mt-5">
-                        <a href="index.html" class="app-brand-link gap-2">
-                            <span class="app-brand-text demo text-heading fw-semibold">Member HAJ</span>
+                        <a href="{{ route('home') }}" class="app-brand-link gap-2">
+                            <img src="{{ asset('images/logoap.png') }}" alt="Member HAJ Logo" class="app-brand-logo" style="width: 150px; height: auto;">
                         </a>
                     </div>
-                    <!-- /Logo -->
-
                     <div class="card-body mt-1">
-                        <h4 class="mb-1">Selamat Datang Mitra HAJ</h4>
-                        <p class="mb-5">Silahkan masukkan username/email dan password anda</p>
+                        <div class="text-center">
+                            <h4 class="mb-1">Selamat Datang Mitra HAJJ</h4>
+                            <p class="mb-5">Silahkan masukkan username/email dan password anda</p>
+                        </div>
+                        
 
                         <form id="formAuthentication" class="mb-5" action="{{ route('mitra.login') }}" method="POST">
                             @csrf
