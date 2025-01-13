@@ -3,14 +3,14 @@
 
 <head>
     <meta charset="utf-8" />
-    <title>Tydek - Creative Agency Landing Page Tamplet</title>
+    <title>HAJJ</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Premium Bootstrap v5.1.3 Landing Page Template" />
     <meta name="keywords" content="bootstrap v5.1.3, premium, marketing, multipurpose" />
     <meta content="Themesdesign" name="author" />
 
     <!-- fevicon -->
-    <link rel="shortcut icon" href="{{ asset('assets_landing/images/favicon.ico') }}">
+    <link rel="shortcut icon" href="{{ asset('images/logoap.png') }}">
 
     <!-- Bootstrap css -->
     <link rel="stylesheet" href="{{ asset('assets_landing/css/bootstrap.min.css') }}" type="text/css" />

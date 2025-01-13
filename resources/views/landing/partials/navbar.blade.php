@@ -34,6 +34,7 @@
             <!-- Button trigger modal -->
             <a href="{{ route('mitra.login') }}" class="btn btn-primary nav-btn">
                 Masuk Mitra
+                </a>
             <!-- Nav btn -->
         </div>
     </div><!-- End container -->
