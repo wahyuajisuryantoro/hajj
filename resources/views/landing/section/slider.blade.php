@@ -4,7 +4,7 @@
         <!-- Swiper slider -->
         <div class="row">
             <div class="col-lg-12">
-                <div class="swiper mySwiper1">
+                <div class="swiper mySwiper8">
                     <div class="swiper-wrapper">
                         <div class="swiper-slide">
                             <div class="team-member">

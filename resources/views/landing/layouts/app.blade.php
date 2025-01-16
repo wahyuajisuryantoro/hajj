@@ -94,35 +94,6 @@
 
     <!-- App Js -->
     <script src="{{ asset('assets_landing/js/app.js') }}"></script>
-
-    <script>
-        let startY = 0; // Posisi awal saat menyentuh layar
-        let endY = 0;   // Posisi akhir saat menyentuh layar
-    
-        // Deteksi sentuhan awal
-        document.body.addEventListener('touchstart', function (e) {
-            startY = e.touches[0].clientY;
-        });
-    
-        // Deteksi sentuhan akhir
-        document.body.addEventListener('touchend', function (e) {
-            endY = e.changedTouches[0].clientY;
-    
-            // Periksa apakah pengguna menggeser ke bawah (pull-to-refresh)
-            if (endY - startY > 100) { // 100px sebagai batas minimal geser ke bawah
-                location.reload(); // Refresh halaman
-            }
-        });
-    
-        // Opsional: Tambahkan geser ke atas untuk reload
-        document.body.addEventListener('touchmove', function (e) {
-            if (startY - e.touches[0].clientY > 100) { // 100px sebagai batas minimal geser ke atas
-                location.reload(); // Refresh halaman
-            }
-        });
-    </script>
-    
-
 </body>
 
 </html>

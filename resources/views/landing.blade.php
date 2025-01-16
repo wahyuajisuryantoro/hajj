@@ -6,5 +6,5 @@
     @include('landing.section.berita')
     @include('landing.section.panduan')
     @include('landing.section.testimonial')
-
+    @include('landing.section.sosmed')
 @endsection

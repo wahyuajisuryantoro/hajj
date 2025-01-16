@@ -19,7 +19,8 @@ Route::post('/login', [Member_AuthController::class, 'login'])->name('mitra.logi
 Route::post('/logout', [Member_AuthController::class, 'logout'])->name('mitra.logout');
 Route::get('/programs/{id}', [LandingController::class, 'showProgram'])->name('programs.show');
 Route::get('/news/{id}', [LandingController::class, 'showNews'])->name('news.show');
-
+Route::get('/programs', [LandingController::class, 'allPrograms'])->name('programs.index');
+Route::get('/berita', [LandingController::class, 'allBerita'])->name('news.index');
 // Protected routes
 Route::middleware(['mitra.auth'])->group(function () {
     // Dashboard
