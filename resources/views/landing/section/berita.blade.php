@@ -1,13 +1,12 @@
 <!-- start news list -->
 <section class="section news-list" id="berita">
     <div class="container">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <div class="d-flex align-items-center gap-2">
-                <div>
-                    <h5 class="mb-0">Berita</h5>
-                    <small class="text-muted">Daftar Berita Kami</small>
-                </div>
+        <div class="d-flex align-items-center justify-content-between mb-4">
+            <div>
+                <h5 class="mb-0">Berita Terbaru</h5>
+                <small class="text-muted">Informasi Terkini</small>
             </div>
+            <a href="{{ route('news.index') }}" class="btn btn-primary" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; line-height: 1.5; border-radius: 0.6rem;">Lihat Semua Berita</a>
         </div>
         <div class="list-group mb-4">
             @forelse($news as $item)

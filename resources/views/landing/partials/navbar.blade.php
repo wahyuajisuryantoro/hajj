@@ -24,8 +24,13 @@
                     <li class="nav-item">
                         <a class="nav-link" href="#berita">Berita</a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#panduan">Panduan</a>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="panduanDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            Panduan
+                        </a>
+                        <ul class="dropdown-menu" aria-labelledby="panduanDropdown">
+                            <li><a class="dropdown-item" href="{{ route('panduan.hapus-akun') }}">Hapus Akun</a></li>
+                        </ul>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="#testimonials">Testimonials</a>
@@ -40,14 +45,20 @@
                     <li class="nav-item">
                         <a class="nav-link" href="{{ route('home') }}#berita">Berita</a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ route('home') }}#panduan">Panduan</a>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="panduanDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            Panduan
+                        </a>
+                        <ul class="dropdown-menu" aria-labelledby="panduanDropdown">
+                            <li><a class="dropdown-item" href="{{ route('panduan.hapus-akun') }}">Hapus Akun</a></li>
+                        </ul>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="{{ route('home') }}#testimonials">Testimonials</a>
                     </li>
                 @endif
             </ul>
+        </div>
             <!-- Button trigger modal -->
             <a href="{{ route('mitra.login') }}" class="btn btn-primary nav-btn">
                 Masuk Mitra

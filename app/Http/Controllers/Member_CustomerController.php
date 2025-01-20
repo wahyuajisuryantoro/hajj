@@ -144,62 +144,15 @@ class Member_CustomerController extends Controller
 
     public function store(Request $request)
     {
-
-        $messages = [
-            'username.required' => 'Username wajib diisi',
-            'username.unique' => 'Username sudah digunakan',
-            'email.email' => 'Format email tidak valid',
-            'email.unique' => 'Email sudah digunakan',
-            'password.required' => 'Password wajib diisi',
-            'password.min' => 'Password minimal 6 karakter',
-            'name.required' => 'Nama wajib diisi',
-            'NIK.required' => 'NIK wajib diisi',
-            'NIK.unique' => 'NIK sudah digunakan',
-            'sex.required' => 'Jenis kelamin wajib dipilih',
-            'phone.required' => 'Nomor telepon wajib diisi',
-            'code_province.exists' => 'Provinsi tidak valid',
-            'code_city.exists' => 'Kota/Kabupaten tidak valid',
-            'code_cabang.exists' => 'Cabang tidak valid',
-            'code_mitra.required' => 'Mitra wajib diisi',
-            'code_mitra.exists' => 'Mitra tidak valid',
-            'code_program.exists' => 'Program tidak valid',
-            'birth_date.date' => 'Tanggal lahir tidak valid',
-            'picture_ktp.required' => 'Foto KTP wajib diunggah',
-            'picture_ktp.image' => 'File foto KTP harus berupa gambar',
-            'picture_ktp.mimes' => 'Format foto KTP harus jpeg, png, atau jpg',
-            'picture_ktp.max' => 'Ukuran foto KTP maksimal 2MB',
-            'status_prospek.required' => 'Status prospek wajib dipilih',
-            'status_prospek.in' => 'Status prospek tidak valid',
-        ];
-
-
-        $validator = Validator::make($request->all(), [
-            'username' => 'required|unique:customers,username',
-            'email' => 'nullable|email|unique:customers,email',
-            'password' => 'required|min:6',
-            'name' => 'required|string|max:255',
-            'NIK' => 'required|unique:customers,NIK|digits:16',
-            'sex' => 'required|in:L,P',
-            'phone' => 'required|string|max:20',
-            'code_province' => 'nullable|exists:provinces,code',
-            'code_city' => 'nullable|exists:cities,code',
-            'code_cabang' => 'nullable|exists:cabangs,code',
-            'code_mitra' => 'required|exists:mitras,code',
-            'code_category' => 'nullable|exists:customer_categories,code',
-            'code_program' => 'nullable|exists:programs,code',
-            'birth_date' => 'nullable|date',
-            'picture_ktp' => 'required|image|mimes:jpeg,png,jpg|max:2048',
-            'status_prospek' => 'required|in:cold,warm,hot',
-        ], $messages);
-
-
-        if ($validator->fails()) {
-            Alert::error('Error', $validator->errors()->first());
-            return back()->withErrors($validator)->withInput();
-        }
-
         try {
             DB::beginTransaction();
+
+            // Log start process
+            Log::info('Memulai proses pembuatan customer baru', [
+                'request_data' => $request->all()
+            ]);
+
+            // Generate new code
             $lastCode = DB::table('customers')
                 ->whereNotNull('code')
                 ->orderBy('code', 'desc')
@@ -207,34 +160,49 @@ class Member_CustomerController extends Controller
                 ->value('code');
             $newCodeNumber = ($lastCode ? intval($lastCode) + 1 : 1);
             $newCode = str_pad($newCodeNumber, 10, '0', STR_PAD_LEFT);
-            while (DB::table('customers')->where('code', $newCode)->exists()) {
-                $newCodeNumber++;
-                $newCode = str_pad($newCodeNumber, 10, '0', STR_PAD_LEFT);
-            }
+
+            Log::info('Generated new code', [
+                'last_code' => $lastCode,
+                'new_code' => $newCode
+            ]);
+
             $picture_ktp = null;
             if ($request->hasFile('picture_ktp')) {
-                $picture_ktp = UploadFile::file($request->file('picture_ktp'), 'customer/ktp');
+                try {
+                    $picture_ktp = UploadFile::file($request->file('picture_ktp'), 'customer/ktp');
+                    Log::info('Berhasil upload KTP', [
+                        'filename' => $picture_ktp
+                    ]);
+                } catch (\Exception $e) {
+                    Log::error('Gagal upload KTP', [
+                        'error' => $e->getMessage(),
+                        'file' => $request->file('picture_ktp')
+                    ]);
+                    throw $e;
+                }
             }
 
             $loggedInMitra = Auth::guard('mitra')->user();
-            $codeMitra = $loggedInMitra->code ?? null;
+            Log::info('Data mitra', [
+                'mitra_code' => $loggedInMitra->code ?? 'null',
+                'mitra_data' => $loggedInMitra ?? 'not logged in'
+            ]);
 
-            Customer::create([
+            $customerData = [
                 'name' => $request->name,
                 'code' => $newCode,
-                'username' => $request->username,
-                'password' => Hash::make($request->password),
-                'phone' => $request->phone,
-                'job' => $request->job,
-                'email' => $request->email,
-                'code_category' => $request->code_category,
-                'code_cabang' => $request->code_cabang,
-                'code_mitra' => $codeMitra,
+                'username' => '',
+                'password' => '',
+                'email' => '',
+                'code_category' => '',
+                'code_cabang' => '',
+                'code_mitra' => $loggedInMitra->code ?? null,
                 'code_city' => $request->code_city,
                 'code_province' => $request->code_province,
+                'phone' => $request->phone,
                 'note' => $request->note,
                 'status' => 'prospek',
-                'status_prospek' => $request->status_prospek,
+                'status_prospek' => 'cold',
                 'status_jamaah' => 'nonactive',
                 'status_alumni' => 'nonactive',
                 'address' => $request->address,
@@ -243,25 +211,53 @@ class Member_CustomerController extends Controller
                 'birth_place' => $request->birth_place,
                 'birth_date' => $request->birth_date,
                 'picture_ktp' => $picture_ktp,
-            ]);
-            DB::commit();
-            Alert::success('Berhasil', 'Data Customer berhasil ditambahkan')
-                ->persistent(true)
-                ->autoClose(5000);
+            ];
 
-            return redirect()->route('customer.create');
+            Log::info('Mencoba membuat customer baru dengan data:', [
+                'customer_data' => $customerData
+            ]);
+
+            $customer = Customer::create($customerData);
+
+            Log::info('Customer berhasil dibuat', [
+                'customer_id' => $customer->id,
+                'customer_code' => $customer->code
+            ]);
+
+            DB::commit();
+            return response()->json([
+                'success' => true,
+                'message' => 'Data Customer berhasil ditambahkan'
+            ]);
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Customer Registration Error: ' . $e->getMessage());
+
+            Log::error('Error saat membuat customer:', [
+                'error_message' => $e->getMessage(),
+                'error_line' => $e->getLine(),
+                'error_file' => $e->getFile(),
+                'error_trace' => $e->getTraceAsString(),
+                'request_data' => $request->all()
+            ]);
 
             if (isset($picture_ktp)) {
-                UploadFile::delete('customer/ktp', $picture_ktp);
+                try {
+                    UploadFile::delete('customer/ktp', $picture_ktp);
+                    Log::info('Berhasil menghapus file KTP setelah error', [
+                        'filename' => $picture_ktp
+                    ]);
+                } catch (\Exception $deleteError) {
+                    Log::error('Gagal menghapus file KTP setelah error', [
+                        'filename' => $picture_ktp,
+                        'error' => $deleteError->getMessage()
+                    ]);
+                }
             }
-            Alert::error('Error', 'Terjadi kesalahan pada sistem. Silakan coba lagi.')
-                ->persistent(true)
-                ->autoClose(5000);
 
-            return back()->withInput();
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan pada sistem. Error: ' . $e->getMessage()
+            ], 500);
         }
     }
 

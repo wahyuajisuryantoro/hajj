@@ -13,15 +13,19 @@
         <div class="col-xxl-4">
             <div class="card h-100">
                 <div class="card-body text-nowrap">
-                    <h5 class="card-title mb-1">Selamat Datang <span class="fw-bold">{{ $loggedInMitra->name }}</span>! 🎉
-                    </h5>
+                    <h5 class="card-title mb-1">Selamat Datang <span class="fw-bold">{{ $loggedInMitra->name }}</span>! 🎉</h5>
                     <p class="card-subtitle mb-3">Total Ujroh Bulan Ini</p>
                     <h4 class="text-primary mb-0">Rp {{ number_format($totalUjroh, 0, ',', '.') }}</h4>
                     <p class="mb-3">{{ $ujrohPercentage }}% dari bulan lalu 🚀</p>
                     <a href="{{ route('bonus.index') }}" class="btn btn-sm btn-primary">Lihat Detail</a>
                 </div>
-                <img src="{{ asset('assets/img/illustrations/trophy.png') }}" class="position-absolute bottom-0 end-0 me-4"
-                    height="140" alt="trophy" />
+                @if($loggedInMitra->picture_profile)
+                    <img src="{{ Auth::guard('mitra')->user()->picture_profile }}" class="position-absolute bottom-0 end-0 me-4 rounded-circle" height="140" width="140" alt="Avatar {{ $loggedInMitra->name }}" style="object-fit: cover;" />
+                @else
+                    <div class="position-absolute bottom-0 end-0 me-4 rounded-circle bg-primary d-flex align-items-center justify-content-center" style="width: 140px; height: 140px;">
+                        <span class="text-white" style="font-size: 60px;">{{ strtoupper(substr($loggedInMitra->name, 0, 1)) }}</span>
+                    </div>
+                @endif
             </div>
         </div>
 
@@ -275,8 +279,6 @@
 
         (function() {
             let cardColor, labelColor, headingColor, borderColor, bodyColor, grayColor, bodyColorLabel;
-
-            // Chart Status Pembayaran (Menggantikan Organic Sessions Chart)
             const organicSessionsEl = document.querySelector('#organicSessionsChart');
             if (organicSessionsEl) {
                 const statusPembayaran = @json($statusPembayaran);
@@ -348,8 +350,6 @@
                 const organicSessions = new ApexCharts(organicSessionsEl, organicSessionsConfig);
                 organicSessions.render();
             }
-
-            // Bonus Overview Chart (Menggantikan Weekly Overview)
             const weeklyOverviewChartEl = document.querySelector('#weeklyOverviewChart');
             if (weeklyOverviewChartEl) {
                 const monthlyData = @json($completeMonths);
@@ -439,8 +439,6 @@
                 const weeklyOverviewChart = new ApexCharts(weeklyOverviewChartEl, weeklyOverviewChartConfig);
                 weeklyOverviewChart.render();
             }
-
-            // Program Timeline Chart
             const projectTimelineEl = document.querySelector('#projectTimelineChart');
             if (projectTimelineEl) {
                 const programData = @json($upcomingPrograms);
@@ -528,7 +526,6 @@
                 projectTimeline.render();
             }
 
-            // Helper function
             function formatRupiah(value) {
                 return new Intl.NumberFormat('id-ID', {
                     style: 'currency',

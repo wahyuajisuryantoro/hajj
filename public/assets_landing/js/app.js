@@ -149,12 +149,17 @@ var swiper = new Swiper(".mySwiper8", {
   slidesPerView: 1,
   spaceBetween: 30,
   loop: true,
+  autoplay: {
+    delay: 3000, 
+    disableOnInteraction: false, 
+    pauseOnMouseEnter: true 
+  },
   pagination: {
     el: ".swiper-pagination",
     clickable: true,
   },
   navigation: {
-    nextEl: ".swiper-button-next",
+    nextEl: ".swiper-button-prev",
     prevEl: ".swiper-button-prev",
   },
 });

@@ -14,4 +14,21 @@ class News extends Model
     protected $fillable = [
         'name', 'code_category', 'content', 'picture', 'url', 'publish'
     ];
+
+    public function category()
+    {
+        return $this->belongsTo(NewsCategory::class, 'code_category', 'code');
+    }
+
+    // Accessor untuk mendapatkan nama kategori
+    public function getCategoryNameAttribute()
+    {
+        return $this->category ? $this->category->name : 'Tidak ada kategori';
+    }
+
+    // Scope untuk berita yang dipublish
+    public function scopePublished($query)
+    {
+        return $query->where('publish', 1);
+    }
 }

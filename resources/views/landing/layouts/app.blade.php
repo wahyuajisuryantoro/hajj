@@ -94,9 +94,6 @@
 
     <!-- App Js -->
     <script src="{{ asset('assets_landing/js/app.js') }}"></script>
-
-    
-
 </body>
 
 </html>

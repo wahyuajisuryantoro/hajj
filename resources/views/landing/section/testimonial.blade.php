@@ -16,13 +16,13 @@
                         @foreach($testimonis as $testimoni)
                         <div class="swiper-slide client-box card">
                             <div class="client-content card-body p-0">
-                                <p class="text-dark mb-0 fs-5 lh-base">{{ $testimoni->content }}</p>
+                                <p class="text-dark mb-0 fs-10 lh-base">{{ $testimoni->content }}</p>
                             </div>
                             <!--end client-content-->
                             <div class="d-flex align-items-center mt-4 pt-3">
-                                <img src="{{ $testimoni->picture }}" alt="{{ $testimoni->name }}" height="55" width="55" class="rounded-circle">
+                                <img src="{{ $testimoni->picture }}" alt="{{ $testimoni->name }}" height="30" width="30" class="rounded-circle">
                                 <div class="ms-2">
-                                    <h5 class="mb-0">{{ $testimoni->name }}</h5>
+                                    <p class="mb-0 fs-8">{{ $testimoni->name }}</p>
                                     <p class="text-muted mb-0">{{ $testimoni->address }}</p>
                                 </div>
                             </div>

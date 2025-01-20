@@ -3,11 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\News;
+use App\Models\NewsCategory;
 use App\Models\Program;
+use App\Models\ProgramCategory;
 use App\Models\Testimoni;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Response;
-use Illuminate\Support\Facades\Log;
 
 class LandingController extends Controller
 {
@@ -30,23 +30,46 @@ class LandingController extends Controller
         $news = News::findOrFail($id);
         return view('landing.pages.detail-berita', compact('news'));
     }
-    
-   public function downloadGuide($file)
+
+    public function allPrograms(Request $request)
     {
-        try {
-            $path = public_path('documents/' . $file);
-            
-            if (!file_exists($path)) {
-                throw new Exception("File not found: " . $path);
-            }
-            
-            return Response::download($path);
-        } catch (Exception $e) {
-            Log::error('Error downloading file: ' . $e->getMessage());
-            
-            return response()->json([
-                'error' => 'An error occurred while downloading the file: ' . $e->getMessage()
-            ], 500);
+        $query = Program::query();
+        if ($request->filled('search')) {
+            $query->where('name', 'like', '%' . $request->search . '%');
         }
+        if ($request->filled('category')) {
+            $query->where('code_category', $request->category);
+        }
+        if ($request->filled('min_price')) {
+            $query->where('price', '>=', $request->min_price);
+        }
+        if ($request->filled('max_price')) {
+            $query->where('price', '<=', $request->max_price);
+        }
+        $sortField = $request->input('sort', 'tanggal_berangkat');
+        $sortDirection = $request->input('direction', 'asc');
+        $query->orderBy($sortField, $sortDirection);
+    
+        $programs = $query->paginate(12)->appends($request->query());
+        $categories = ProgramCategory::all();
+        return view('landing.pages.all-program', compact('programs', 'categories'));
+    }
+
+    public function allBerita(Request $request){
+        $query = News::query()->where('publish', 1);
+        if ($request->filled('search')) {
+            $query->where('name', 'like', '%' . $request->search . '%');
+        }
+        if ($request->filled('category')) {
+            $query->where('code_category', $request->category);
+        }
+        $sortField = $request->input('sort', 'created_at');
+        $sortDirection = $request->input('direction', 'desc');
+        $query->orderBy($sortField, $sortDirection);
+
+        $news = $query->paginate(12)->appends($request->query());
+        $categories = NewsCategory::all();
+
+        return view('landing.pages.all-berita', compact('news', 'categories'));
     }
 }

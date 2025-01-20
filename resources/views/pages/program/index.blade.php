@@ -38,11 +38,11 @@
                             <div class="card-body p-3 pt-0">
                                 <div class="d-flex justify-content-between align-items-center mb-4">
                                     <span class="badge rounded-pill bg-label-primary">{{ $program->code_category }}</span>
-                                    <p class="d-flex align-items-center justify-content-center fw-medium gap-1 mb-0">
+                                    {{-- <p class="d-flex align-items-center justify-content-center fw-medium gap-1 mb-0">
                                         {{ $program->sisa_kursi }}/{{ $program->kuota }} <span class="text-warning">
                                             <i class="ri-user-line ri-24px me-1"></i>
                                         </span>
-                                    </p>
+                                    </p> --}}
                                 </div>
                                 <a href="{{ route('member.program.show', $program->code) }}" class="h5">{{ $program->name }}</a>
                                 <p class="mt-1">{{ Str::limit($program->desc, 100) }}</p>
