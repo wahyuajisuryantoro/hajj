@@ -1,16 +1,18 @@
 <?php
 
 use App\Http\Controllers\LandingController;
-use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Member_AccountController;
 use App\Http\Controllers\Member_AuthController;
 use App\Http\Controllers\Member_BonusController;
-use App\Http\Controllers\Member_MitraController;
-use App\Http\Controllers\Member_JamaahController;
-use App\Http\Controllers\Member_AccountController;
-use App\Http\Controllers\Member_ProgramController;
 use App\Http\Controllers\Member_CustomerController;
 use App\Http\Controllers\Member_DashboardController;
+use App\Http\Controllers\Member_JamaahController;
 use App\Http\Controllers\Member_MarketingToolsController;
+use App\Http\Controllers\Member_MitraController;
+use App\Http\Controllers\Member_ProgramController;
+use App\Http\Controllers\PanduanController;
+use Illuminate\Support\Facades\Route;
+
 
 // Public routes
 Route::get('/', [LandingController::class, 'index'])->name('home');
@@ -21,6 +23,7 @@ Route::get('/programs/{id}', [LandingController::class, 'showProgram'])->name('p
 Route::get('/news/{id}', [LandingController::class, 'showNews'])->name('news.show');
 Route::get('/programs', [LandingController::class, 'allPrograms'])->name('programs.index');
 Route::get('/berita', [LandingController::class, 'allBerita'])->name('news.index');
+Route::get('/panduan/hapus-akun', [PanduanController::class, 'hapusAkun'])->name('panduan.hapus-akun');
 // Protected routes
 Route::middleware(['mitra.auth'])->group(function () {
     // Dashboard

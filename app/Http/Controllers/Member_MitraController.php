@@ -128,7 +128,7 @@ class Member_MitraController extends Controller
                 'bank_name' => $request->bank_name,
                 'picture_profile' => $picture_profile,
                 'picture_ktp' => $picture_ktp,
-                'status' => 'active'
+                'status' => 'nonactive'
             ]);
 
             Alert::success('Berhasil', 'Data Mitra berhasil ditambahkan')
