@@ -2,7 +2,8 @@
 <aside id="layout-menu" class="layout-menu menu-vertical menu bg-menu-theme">
     <div class="app-brand demo">
         <a href="{{ url('/dashboard') }}" class="app-brand-link">
-            <span class="app-brand-text demo menu-text fw-bold ms-2">Member Panel</span>
+            <img src="{{ asset('images/logo-hajj.png') }}" alt="Hajj Logo" class="rounded-circle" style="width: 40px; height: 40px; object-fit: cover;">
+            <span class="app-brand-text demo menu-text fw-bold ms-2">Mitra Panel</span>
         </a>
 
         <a href="javascript:void(0);" class="layout-menu-toggle menu-link text-large ms-auto">

@@ -11,7 +11,7 @@
         </div>
         <div class="list-group mb-4">
             @forelse($news as $item)
-            <a href="#" class="list-group-item list-group-item-action border-0 mb-3">
+            <a href="{{ route('news.show', $item->id) }}" class="list-group-item list-group-item-action border-0 mb-3">
                 <div class="d-flex">
                     <div class="flex-shrink-0">
                         <img src="{{ $item->picture ?: asset('images/default-news.jpg') }}" 

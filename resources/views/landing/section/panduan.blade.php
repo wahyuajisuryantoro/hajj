@@ -40,20 +40,19 @@
                 ];
             @endphp
 
-            @foreach($guides as $guide)
-            <div class="list-group-item border-0 d-flex justify-content-between align-items-center py-3">
-                <div class="d-flex align-items-center gap-3">
-                    <div class="pdf-icon">
-                        <i class="mdi mdi-file-pdf-box text-danger"></i>
+           @foreach($guides as $guide)
+                <div class="list-group-item border-0 d-flex justify-content-between align-items-center py-3">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="pdf-icon">
+                            <i class="mdi mdi-file-pdf-box text-danger"></i>
+                        </div>
+                        <span>{{ $guide['title'] }}</span>
                     </div>
-                    <span>{{ $guide['title'] }}</span>
+                    <a href="{{ route('download.guide', ['file' => $guide['file']]) }}" 
+                       class="download-link">
+                        <i class="mdi mdi-download text-primary"></i>
+                    </a>
                 </div>
-                <a href="{{ asset('documents/' . $guide['file']) }}" 
-                   class="download-link"
-                   download>
-                    <i class="mdi mdi-download text-primary"></i>
-                </a>
-            </div>
             @endforeach
         </div>
     </div>

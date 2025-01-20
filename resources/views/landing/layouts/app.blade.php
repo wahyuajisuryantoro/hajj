@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="utf-8" />
-    <title>HAJJ</title>
+    <title>HAJJ Member</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Premium Bootstrap v5.1.3 Landing Page Template" />
     <meta name="keywords" content="bootstrap v5.1.3, premium, marketing, multipurpose" />
@@ -94,6 +94,8 @@
 
     <!-- App Js -->
     <script src="{{ asset('assets_landing/js/app.js') }}"></script>
+
+    
 
 </body>
 

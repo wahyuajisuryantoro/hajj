@@ -19,12 +19,20 @@
                             <div class="swiper-slide">
                                 <div class="program-card">
                                     <div class="program-img">
-                                        <img src="{{ $program->picture ?: asset('images/default-program.jpg') }}"
-                                            alt="{{ $program->name }}" class="img-fluid rounded">
+                                        <a href="{{ route('programs.show', $program->id) }}">
+                                            <!-- Tautan ke halaman detail -->
+                                            <img src="{{ $program->picture ?: asset('images/default-program.jpg') }}"
+                                                alt="{{ $program->name }}" class="img-fluid rounded">
+                                        </a>
                                     </div>
                                     <div class="program-content mt-3">
-                                        <h6 class="mb-2">{{ $program->name }}</h6>
-                                        <p class="text-primary mb-0">Rp{{ number_format($program->price, 0, ',', '.') }}</p>
+                                        <h6 class="mb-2">
+                                            <a href="{{ route('programs.show', $program->id) }}" class="text-dark">
+                                                {{ $program->name }}
+                                            </a>
+                                        </h6>
+                                        <p class="text-primary mb-0">Rp{{ number_format($program->price, 0, ',', '.') }}
+                                        </p>
                                     </div>
                                 </div>
                             </div>

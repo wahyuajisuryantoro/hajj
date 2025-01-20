@@ -17,6 +17,10 @@ Route::get('/', [LandingController::class, 'index'])->name('home');
 Route::get('/login', [Member_AuthController::class, 'index'])->name('root');
 Route::post('/login', [Member_AuthController::class, 'login'])->name('mitra.login');
 Route::post('/logout', [Member_AuthController::class, 'logout'])->name('mitra.logout');
+Route::get('/programs/{id}', [LandingController::class, 'showProgram'])->name('programs.show');
+Route::get('/news/{id}', [LandingController::class, 'showNews'])->name('news.show');
+Route::get('/download/{file}', [LandingController::class, 'downloadGuide'])->name('download.guide');
+
 
 // Protected routes
 Route::middleware(['mitra.auth'])->group(function () {
