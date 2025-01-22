@@ -282,10 +282,11 @@ class Member_MitraController extends Controller
         return view('pages.mitra.genealogy', compact('tree', 'title'));
     }
 
+    // API JSON
+
     public function getAllDataMitra()
     {
         try {
-            // Ambil data mitra dengan relasi yang diperlukan
             $mitra = Mitra::with([
                 'category:code,name',
                 'cabang:code,name',
@@ -295,7 +296,7 @@ class Member_MitraController extends Controller
                     $query->select('id', 'code', 'code_mitra', 'name', 'level');
                 }
             ])
-                ->active() // Menggunakan scope yang sudah ada di model
+                ->active()
                 ->select([
                     'id',
                     'code',
@@ -321,7 +322,6 @@ class Member_MitraController extends Controller
                 ], 404);
             }
 
-            // Transform data jika diperlukan
             $transformedData = $mitra->map(function ($item) {
                 return [
                     'id' => $item->id,
@@ -367,6 +367,122 @@ class Member_MitraController extends Controller
             ], 500);
         }
     }
+
+    public function storeMitraApi(Request $request)
+    {
+        $messages = [
+            'username.required' => 'Username wajib diisi',
+            'username.unique' => 'Username sudah digunakan',
+            'email.email' => 'Format email tidak valid',
+            'email.unique' => 'Email sudah digunakan',
+            'password.required' => 'Password wajib diisi',
+            'password.min' => 'Password minimal 6 karakter',
+            'name.required' => 'Nama wajib diisi',
+            'sex.required' => 'Jenis kelamin wajib dipilih',
+            'phone.required' => 'Nomor telepon wajib diisi',
+            'level.required' => 'Level wajib dipilih',
+            'picture_profile.image' => 'File foto profile harus berupa gambar',
+            'picture_profile.mimes' => 'Format foto profile harus jpeg, png, atau jpg',
+            'picture_profile.max' => 'Ukuran foto profile maksimal 2MB',
+            'picture_ktp.image' => 'File foto KTP harus berupa gambar',
+            'picture_ktp.mimes' => 'Format foto KTP harus jpeg, png, atau jpg',
+            'picture_ktp.max' => 'Ukuran foto KTP maksimal 2MB',
+        ];
+
+        $validator = Validator::make($request->all(), [
+            'username' => 'required|unique:mitras,username',
+            'email' => 'nullable|email|unique:mitras,email',
+            'password' => 'required|min:6',
+            'name' => 'required',
+            'sex' => 'required|in:L,P',
+            'phone' => 'required',
+            'picture_profile' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+            'picture_ktp' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+        ], $messages);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => $validator->errors()->first()
+            ], 400);
+        }
+
+        try {
+            $lastCode = DB::table('mitras')
+                ->whereNotNull('code')
+                ->orderBy('code', 'desc')
+                ->lockForUpdate()
+                ->value('code');
+
+            $newCodeNumber = ($lastCode ? intval($lastCode) + 1 : 1);
+            $newCode = str_pad($newCodeNumber, 10, '0', STR_PAD_LEFT);
+
+            while (DB::table('mitras')->where('code', $newCode)->exists()) {
+                $newCodeNumber++;
+                $newCode = str_pad($newCodeNumber, 10, '0', STR_PAD_LEFT);
+            }
+
+            $referral_code = strtolower(Str::random(7));
+            $picture_profile = null;
+            if ($request->hasFile('picture_profile')) {
+                $picture_profile = UploadFile::file($request->file('picture_profile'), 'mitra/profile');
+            }
+
+            $picture_ktp = null;
+            if ($request->hasFile('picture_ktp')) {
+                $picture_ktp = UploadFile::file($request->file('picture_ktp'), 'mitra/ktp');
+            }
+
+            $loggedInMitra = Auth::guard('mitra')->user();
+            $codeMitra = $loggedInMitra->code ?? null;
+
+            $mitra = Mitra::create([
+                'code' => $newCode,
+                'username' => $request->username,
+                'password' => Hash::make($request->password),
+                'referral_code' => $referral_code,
+                'level' => 'mitra',
+                'code_mitra' => $codeMitra,
+                'name' => $request->name,
+                'NIK' => $request->NIK,
+                'sex' => $request->sex,
+                'birth_place' => $request->birth_place,
+                'birth_date' => $request->birth_date,
+                'address' => $request->address,
+                'code_city' => $request->code_city,
+                'code_province' => $request->code_province,
+                'phone' => $request->phone,
+                'email' => $request->email,
+                'bank' => $request->bank,
+                'bank_number' => $request->bank_number,
+                'bank_name' => $request->bank_name,
+                'picture_profile' => $picture_profile,
+                'picture_ktp' => $picture_ktp,
+                'status' => 'nonactive'
+            ]);
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Data Mitra berhasil ditambahkan',
+                'data' => $mitra
+            ], 201);
+        } catch (\Exception $e) {
+            Log::error('Mitra Registration Error: ' . $e->getMessage());
+
+            if (isset($picture_profile)) {
+                UploadFile::delete('mitra/profile', $picture_profile);
+            }
+            if (isset($picture_ktp)) {
+                UploadFile::delete('mitra/ktp', $picture_ktp);
+            }
+
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.'
+            ], 500);
+        }
+    }
+
 
     // private function buildMitraTree($mitra)
     // {

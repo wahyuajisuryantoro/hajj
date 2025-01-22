@@ -41,6 +41,7 @@ Route::prefix('api')->group(function () {
 
     // Mitra Routes
     Route::get('mitra', [Member_MitraController::class, 'getAllDataMitra']);
+    Route::post('mitra/store', [Member_MitraController::class, 'storeMitraApi']);
 });
 // Protected routes
 Route::middleware(['mitra.auth'])->group(function () {
@@ -112,5 +113,4 @@ Route::middleware(['mitra.auth'])->group(function () {
 
 
     Route::post('/logout', [Member_AuthController::class, 'logout'])->name('mitra.logout');
-
 });
