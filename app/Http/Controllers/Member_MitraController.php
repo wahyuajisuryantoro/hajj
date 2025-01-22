@@ -330,9 +330,9 @@ class Member_MitraController extends Controller
                     'referral_code' => $item->referral_code,
                     'level' => $item->level,
                     'name' => $item->name,
-                    'phone' => $item->phone_number, // Menggunakan accessor dari model
+                    'phone' => $item->phone_number,
                     'email' => $item->email,
-                    'picture_profile' => $item->picture_profile ? asset('storage/mitra/profile/' . $item->picture_profile) : null,
+                    'picture_profile' => $item->picture_profile,
                     'status' => $item->status,
                     'category' => $item->category ? [
                         'code' => $item->category->code,
