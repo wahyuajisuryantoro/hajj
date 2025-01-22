@@ -72,4 +72,66 @@ class LandingController extends Controller
 
         return view('landing.pages.all-berita', compact('news', 'categories'));
     }
+
+    // JSON endpoint API
+    public function showProgramApi($id)
+    {
+        $program = Program::findOrFail($id);
+        return response()->json($program);
+    }
+    public function showNewsApi($id)
+    {
+        $news = News::findOrFail($id);
+        return response()->json($news);
+    }
+
+    public function allProgramsApi(Request $request)
+    {
+        $query = Program::query();
+        if ($request->filled('search')) {
+            $query->where('name', 'like', '%' . $request->search . '%');
+        }
+        if ($request->filled('category')) {
+            $query->where('code_category', $request->category);
+        }
+        if ($request->filled('min_price')) {
+            $query->where('price', '>=', $request->min_price);
+        }
+        if ($request->filled('max_price')) {
+            $query->where('price', '<=', $request->max_price);
+        }
+        $sortField = $request->input('sort', 'tanggal_berangkat');
+        $sortDirection = $request->input('direction', 'asc');
+        $query->orderBy($sortField, $sortDirection);
+    
+        $programs = $query->paginate(12);
+        $categories = ProgramCategory::all();
+        
+        return response()->json([
+            'programs' => $programs,
+            'categories' => $categories
+        ]);
+    }
+
+    public function allBeritaApi(Request $request)
+    {
+        $query = News::query()->where('publish', 1);
+        if ($request->filled('search')) {
+            $query->where('name', 'like', '%' . $request->search . '%');
+        }
+        if ($request->filled('category')) {
+            $query->where('code_category', $request->category);
+        }
+        $sortField = $request->input('sort', 'created_at');
+        $sortDirection = $request->input('direction', 'desc');
+        $query->orderBy($sortField, $sortDirection);
+
+        $news = $query->paginate(12);
+        $categories = NewsCategory::all();
+
+        return response()->json([
+            'news' => $news,
+            'categories' => $categories
+        ]);
+    }
 }

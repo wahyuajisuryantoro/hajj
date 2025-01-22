@@ -28,7 +28,8 @@ Route::get('/panduan/hapus-akun', [PanduanController::class, 'hapusAkun'])->name
 // JSON API routes
 Route::get('/api/programs', [Member_ProgramController::class, 'getPrograms']);
 Route::get('/api/programs/{code}', [Member_ProgramController::class, 'getProgramDetail']);
-
+Route::get('/news/{id}', [LandingController::class, 'showNewsApi']);
+Route::get('/all-news', [LandingController::class, 'allBeritaApi']);
 // Protected routes
 Route::middleware(['mitra.auth'])->group(function () {
     // Dashboard
