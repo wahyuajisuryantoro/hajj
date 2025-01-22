@@ -10,7 +10,7 @@
     <meta content="Themesdesign" name="author" />
 
     <!-- fevicon -->
-    <link rel="shortcut icon" href="{{ asset('assets_landing/images/favicon.ico') }}">
+    <link rel="shortcut icon" href="{{ asset('images/logoap.png') }}">
 
     <!-- Bootstrap css -->
     <link rel="stylesheet" href="{{ asset('assets_landing/css/bootstrap.min.css') }}" type="text/css" />

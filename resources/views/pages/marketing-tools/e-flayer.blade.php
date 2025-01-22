@@ -119,6 +119,7 @@
             {{ $eflayers->links('vendor.pagination.custom') }}
         </div>
         <!-- Modal Share -->
+       <!-- Modal Share -->
         <div class="modal fade" id="shareModal" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog modal-lg modal-simple">
                 <div class="modal-content">
@@ -127,7 +128,7 @@
                         <div class="text-center mb-4">
                             <h4 class="mb-2">Bagikan E-Flayer</h4>
                             <p class="text-center mb-4">
-                                Bagikan e-flayer ini ke media sosial atau salin linknya untuk dibagikan ke teman Anda
+                                Bagikan e-flayer ini ke WhatsApp atau salin linknya untuk dibagikan ke teman Anda
                             </p>
                         </div>
                         <hr class="my-4" />
@@ -136,7 +137,7 @@
                                 style="max-height: 300px">
                             <h5 class="mt-3 flayer-title"></h5>
                         </div>
-
+        
                         <div class="row g-4">
                             <div class="col-lg-9">
                                 <label class="mb-2" for="shareUrl">
@@ -152,21 +153,9 @@
                             </div>
                             <div class="col-lg-3 d-flex align-items-end">
                                 <div class="btn-social">
-                                    <button type="button" class="btn btn-icon btn-facebook share-social"
-                                        data-type="facebook">
-                                        <i class="tf-icons ri-facebook-circle-line ri-22px"></i>
-                                    </button>
-                                    <button type="button" class="btn btn-icon btn-twitter share-social"
-                                        data-type="twitter">
-                                        <i class="tf-icons ri-twitter-line ri-22px"></i>
-                                    </button>
                                     <button type="button" class="btn btn-icon btn-whatsapp share-social"
                                         data-type="whatsapp">
                                         <i class="tf-icons ri-whatsapp-line ri-22px"></i>
-                                    </button>
-                                    <button type="button" class="btn btn-icon btn-telegram share-social"
-                                        data-type="telegram">
-                                        <i class="tf-icons ri-telegram-line ri-22px"></i>
                                     </button>
                                 </div>
                             </div>
@@ -195,33 +184,11 @@
             setTimeout(() => this.textContent = 'Copy Link', 2000);
         });
 
-        // Handle tombol share sosial media
-        document.querySelectorAll('.share-social').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const type = this.dataset.type;
-                const url = document.getElementById('shareUrl').value;
-                const title = document.querySelector('#shareModal .flayer-title').textContent;
-                
-                let shareUrl;
-                switch(type) {
-                    case 'facebook':
-                        shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`;
-                        break;
-                    case 'twitter':
-                        shareUrl = `https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}&text=${encodeURIComponent('Lihat E-Flayer: ' + title)}`;
-                        break;
-                    case 'whatsapp':
-                        shareUrl = `https://wa.me/?text=${encodeURIComponent('Lihat E-Flayer: ' + title + '\n\n' + url)}`;
-                        break;
-                    case 'telegram':
-                        shareUrl = `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent('Lihat E-Flayer: ' + title)}`;
-                        break;
-                }
-                
-                if (shareUrl) {
-                    window.open(shareUrl, '_blank', 'width=600,height=400');
-                }
-            });
+        // Handle tombol share WhatsApp
+        document.querySelector('.share-social[data-type="whatsapp"]').addEventListener('click', function() {
+            const url = document.getElementById('shareUrl').value;
+            const title = document.querySelector('#shareModal .flayer-title').textContent;
+            shareToWhatsApp(title, url);
         });
     });
 
@@ -234,6 +201,10 @@
         document.getElementById('previewImage').src = imageUrl;
         
         shareModal.show();
+    }
+    
+    function shareToWhatsApp(title, url) {
+        ShareChannel.postMessage('whatsapp|' + title + '|' + url);
     }
 </script>
 @endsection

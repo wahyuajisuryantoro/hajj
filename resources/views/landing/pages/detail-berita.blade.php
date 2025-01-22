@@ -2,11 +2,7 @@
 
 @section('content')
 <div class="container my-5">
-    <div class="mb-4">
-        <a href="{{ route('home') }}" class="btn btn-outline-secondary">
-            <i class="bi bi-arrow-left"></i>
-        </a>
-    </div>
+   
 
     <div class="row">
         <div class="col-md-12">
@@ -23,6 +19,11 @@
                 {!! nl2br(e($news->content)) !!}
             </div>
         </div>
+    </div>
+    <div class="mb-4">
+        <a href="{{ route('home') }}" class="btn btn-primary">
+            Kembali
+        </a>
     </div>
 </div>
 @endsection
