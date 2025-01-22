@@ -26,12 +26,19 @@ Route::get('/berita', [LandingController::class, 'allBerita'])->name('news.index
 Route::get('/panduan/hapus-akun', [PanduanController::class, 'hapusAkun'])->name('panduan.hapus-akun');
 
 // JSON API routes
-Route::post('/api/login', [Member_AuthController::class, 'loginApi']);
-Route::post('/api/register', [Member_AuthController::class, 'registerApi']);
-Route::get('/api/programs', [Member_ProgramController::class, 'getPrograms']);
-Route::get('/api/programs/{code}', [Member_ProgramController::class, 'getProgramDetail']);
-Route::get('api/news/{id}', [LandingController::class, 'showNewsApi']);
-Route::get('api/all-news', [LandingController::class, 'allBeritaApi']);
+Route::prefix('api')->group(function () {
+    // Auth routes
+    Route::post('/login', [Member_AuthController::class, 'loginApi']);
+    Route::post('/register', [Member_AuthController::class, 'registerApi']);
+
+    // Program routes
+    Route::get('/programs', [Member_ProgramController::class, 'getPrograms']);
+    Route::get('/programs/{code}', [Member_ProgramController::class, 'getProgramDetail']);
+
+    // News routes
+    Route::get('/news/{id}', [LandingController::class, 'showNewsApi']);
+    Route::get('/all-news', [LandingController::class, 'allBeritaApi']);
+});
 // Protected routes
 Route::middleware(['mitra.auth'])->group(function () {
     // Dashboard
