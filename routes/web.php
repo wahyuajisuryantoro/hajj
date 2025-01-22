@@ -26,6 +26,8 @@ Route::get('/berita', [LandingController::class, 'allBerita'])->name('news.index
 Route::get('/panduan/hapus-akun', [PanduanController::class, 'hapusAkun'])->name('panduan.hapus-akun');
 
 // JSON API routes
+Route::post('/api/login', [Member_AuthController::class, 'loginApi']);
+Route::post('/api/register', [Member_AuthController::class, 'registerApi']);
 Route::get('/api/programs', [Member_ProgramController::class, 'getPrograms']);
 Route::get('/api/programs/{code}', [Member_ProgramController::class, 'getProgramDetail']);
 Route::get('api/news/{id}', [LandingController::class, 'showNewsApi']);
