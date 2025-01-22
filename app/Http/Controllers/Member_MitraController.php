@@ -135,7 +135,6 @@ class Member_MitraController extends Controller
                 ->persistent(true)
                 ->autoClose(5000);
             return redirect()->route('mitra.registration');
-
         } catch (\Exception $e) {
             Log::error('Mitra Registration Error: ' . $e->getMessage());
 
@@ -235,7 +234,7 @@ class Member_MitraController extends Controller
                     $avatar = $row->picture_profile ?
                         '<img src="' . $row->picture_profile . '" alt="Avatar" class="rounded-circle" width="32">' :
                         '<span class="avatar-initial rounded-circle bg-label-primary">' . strtoupper(substr($row->name ?? 'U', 0, 2)) . '</span>';
-                
+
                     return '<a href="' . route('mitra.show', $row->id) . '" class="d-flex justify-content-start align-items-center text-body text-decoration-none">
                             <div class="avatar me-2">
                                 ' . $avatar . '
@@ -283,21 +282,107 @@ class Member_MitraController extends Controller
         return view('pages.mitra.genealogy', compact('tree', 'title'));
     }
 
-    private function buildMitraTree($mitra)
+    public function getAllDataMitra()
     {
-        $tree = [
-            'id' => $mitra->id,
-            'name' => $mitra->name,
-            'email' => $mitra->email,
-            'picture_profile' => $mitra->picture_profile,
-            'children' => []
-        ];
+        try {
+            // Ambil data mitra dengan relasi yang diperlukan
+            $mitra = Mitra::with([
+                'category:code,name',
+                'cabang:code,name',
+                'city:code,name',
+                'province:code,name',
+                'children' => function ($query) {
+                    $query->select('id', 'code', 'code_mitra', 'name', 'level');
+                }
+            ])
+                ->active() // Menggunakan scope yang sudah ada di model
+                ->select([
+                    'id',
+                    'code',
+                    'username',
+                    'referral_code',
+                    'code_category',
+                    'code_cabang',
+                    'code_mitra',
+                    'level',
+                    'name',
+                    'phone',
+                    'email',
+                    'picture_profile',
+                    'status',
+                ])
+                ->get();
 
-        $children = Mitra::where('code_mitra', $mitra->code)->get();
-        foreach ($children as $child) {
-            $tree['children'][] = $this->buildMitraTree($child);
+            if ($mitra->isEmpty()) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Data mitra tidak ditemukan',
+                    'data' => null
+                ], 404);
+            }
+
+            // Transform data jika diperlukan
+            $transformedData = $mitra->map(function ($item) {
+                return [
+                    'id' => $item->id,
+                    'code' => $item->code,
+                    'username' => $item->username,
+                    'referral_code' => $item->referral_code,
+                    'level' => $item->level,
+                    'name' => $item->name,
+                    'phone' => $item->phone_number, // Menggunakan accessor dari model
+                    'email' => $item->email,
+                    'picture_profile' => $item->picture_profile ? asset('storage/mitra/profile/' . $item->picture_profile) : null,
+                    'status' => $item->status,
+                    'category' => $item->category ? [
+                        'code' => $item->category->code,
+                        'name' => $item->category->name
+                    ] : null,
+                    'cabang' => $item->cabang ? [
+                        'code' => $item->cabang->code,
+                        'name' => $item->cabang->name
+                    ] : null,
+                    'city' => $item->city ? [
+                        'code' => $item->city->code,
+                        'name' => $item->city->name
+                    ] : null,
+                    'province' => $item->province ? [
+                        'code' => $item->province->code,
+                        'name' => $item->province->name
+                    ] : null,
+                    'downline_count' => $item->children->count(),
+                ];
+            });
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Data mitra berhasil diambil',
+                'data' => $transformedData
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage(),
+                'data' => null
+            ], 500);
         }
-
-        return $tree;
     }
+
+    // private function buildMitraTree($mitra)
+    // {
+    //     $tree = [
+    //         'id' => $mitra->id,
+    //         'name' => $mitra->name,
+    //         'email' => $mitra->email,
+    //         'picture_profile' => $mitra->picture_profile,
+    //         'children' => []
+    //     ];
+
+    //     $children = Mitra::where('code_mitra', $mitra->code)->get();
+    //     foreach ($children as $child) {
+    //         $tree['children'][] = $this->buildMitraTree($child);
+    //     }
+
+    //     return $tree;
+    // }
 }

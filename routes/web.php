@@ -38,6 +38,9 @@ Route::prefix('api')->group(function () {
     // News routes
     Route::get('/news/{id}', [LandingController::class, 'showNewsApi']);
     Route::get('/all-news', [LandingController::class, 'allBeritaApi']);
+
+    // Mitra Routes
+    Route::get('mitra', [Member_MitraController::class, 'getAllDataMitra']);
 });
 // Protected routes
 Route::middleware(['mitra.auth'])->group(function () {
