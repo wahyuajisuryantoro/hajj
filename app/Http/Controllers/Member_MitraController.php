@@ -298,7 +298,6 @@ class Member_MitraController extends Controller
             }
         ])
             ->where('code_mitra', $codeMitra)
-            ->active()
             ->select([
                 'id',
                 'code',
@@ -342,7 +341,7 @@ class Member_MitraController extends Controller
 
         return response()->json(['status' => true, 'message' => 'Data mitra berhasil diambil', 'data' => $transformedData], 200);
     }
-    
+
     public function storeMitraApi(Request $request)
     {
         $messages = [
