@@ -202,4 +202,28 @@ class Member_DashboardController extends Controller
             'completeMonths'
         ));
     }
+
+    // JSON API
+    public function getDashboardData(Request $request)
+    {
+        $codeMitra = $request->header('code_mitra');
+        if (!$codeMitra) {
+            return response()->json(['status' => false, 'message' => 'Code mitra tidak ditemukan'], 400);
+        }
+        $totalMitra = Mitra::where('code_mitra', $codeMitra)->count();
+        $totalJamaah = Jamaah::where('code_mitra', $codeMitra)->count();
+        $totalCustomer = Customer::where('code_mitra', $codeMitra)->count();
+        $totalBonus = Ujroh::byMitra($codeMitra)->debit()->sum('value');
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Data dashboard berhasil diambil',
+            'data' => [
+                'total_mitra' => $totalMitra,
+                'total_jamaah' => $totalJamaah,
+                'total_customer' => $totalCustomer,
+                'total_bonus' => $totalBonus
+            ]
+        ]);
+    }
 }
