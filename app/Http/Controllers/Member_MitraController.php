@@ -287,21 +287,39 @@ class Member_MitraController extends Controller
     public function getAllDataMitra(Request $request)
     {
         $codeMitra = $request->header('code_mitra');
-        
-        $mitra = Mitra::with(['category:code,name', 'cabang:code,name', 'city:code,name', 'province:code,name', 
+
+        $mitra = Mitra::with([
+            'category:code,name',
+            'cabang:code,name',
+            'city:code,name',
+            'province:code,name',
             'children' => function ($query) {
                 $query->select('id', 'code', 'code_mitra', 'name', 'level');
-            }])
+            }
+        ])
             ->where('code_mitra', $codeMitra)
             ->active()
-            ->select(['id', 'code', 'username', 'referral_code', 'code_category', 'code_cabang', 'code_mitra', 
-                      'level', 'name', 'phone', 'email', 'picture_profile', 'status'])
+            ->select([
+                'id',
+                'code',
+                'username',
+                'referral_code',
+                'code_category',
+                'code_cabang',
+                'code_mitra',
+                'level',
+                'name',
+                'phone',
+                'email',
+                'picture_profile',
+                'status'
+            ])
             ->get();
-    
+
         if ($mitra->isEmpty()) {
             return response()->json(['status' => false, 'message' => 'Data mitra tidak ditemukan', 'data' => null], 404);
         }
-    
+
         $transformedData = $mitra->map(function ($item) {
             return [
                 'id' => $item->id,
@@ -321,9 +339,10 @@ class Member_MitraController extends Controller
                 'downline_count' => $item->children->count(),
             ];
         });
-    
+
         return response()->json(['status' => true, 'message' => 'Data mitra berhasil diambil', 'data' => $transformedData], 200);
     }
+    
     public function storeMitraApi(Request $request)
     {
         $messages = [
@@ -382,10 +401,10 @@ class Member_MitraController extends Controller
             }
 
             // Handle file uploads
-            $picture_profile = $request->hasFile('picture_profile') ? 
+            $picture_profile = $request->hasFile('picture_profile') ?
                 UploadFile::file($request->file('picture_profile'), 'mitra/profile') : null;
-                
-            $picture_ktp = $request->hasFile('picture_ktp') ? 
+
+            $picture_ktp = $request->hasFile('picture_ktp') ?
                 UploadFile::file($request->file('picture_ktp'), 'mitra/ktp') : null;
 
             // Create mitra
@@ -395,7 +414,7 @@ class Member_MitraController extends Controller
                 'password' => Hash::make($request->password),
                 'referral_code' => strtolower(Str::random(7)),
                 'level' => 'mitra',
-                'code_mitra' => $request->header('code_mitra'),
+                'code_mitra' => $request->code_mitra,
                 'name' => $request->name,
                 'NIK' => $request->NIK,
                 'sex' => $request->sex,
@@ -421,10 +440,9 @@ class Member_MitraController extends Controller
                 'message' => 'Data Mitra berhasil ditambahkan',
                 'data' => $mitra
             ], 201);
-
         } catch (\Exception $e) {
             DB::rollBack();
-            
+
             if (isset($picture_profile)) {
                 UploadFile::delete('mitra/profile', $picture_profile);
             }
@@ -440,6 +458,7 @@ class Member_MitraController extends Controller
             ], 500);
         }
     }
+
 
 
     // private function buildMitraTree($mitra)
