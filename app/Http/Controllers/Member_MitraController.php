@@ -327,6 +327,7 @@ class Member_MitraController extends Controller
     public function storeMitraApi(Request $request)
     {
         $messages = [
+            'code_mitra.required' => 'Code mitra tidak ditemukan',
             'username.required' => 'Username wajib diisi',
             'username.unique' => 'Username sudah digunakan',
             'email.email' => 'Format email tidak valid',
@@ -336,7 +337,6 @@ class Member_MitraController extends Controller
             'name.required' => 'Nama wajib diisi',
             'sex.required' => 'Jenis kelamin wajib dipilih',
             'phone.required' => 'Nomor telepon wajib diisi',
-            'level.required' => 'Level wajib dipilih',
             'picture_profile.image' => 'File foto profile harus berupa gambar',
             'picture_profile.mimes' => 'Format foto profile harus jpeg, png, atau jpg',
             'picture_profile.max' => 'Ukuran foto profile maksimal 2MB',
@@ -346,6 +346,7 @@ class Member_MitraController extends Controller
         ];
 
         $validator = Validator::make($request->all(), [
+            'code_mitra' => 'required',
             'username' => 'required|unique:mitras,username',
             'email' => 'nullable|email|unique:mitras,email',
             'password' => 'required|min:6',
@@ -363,7 +364,9 @@ class Member_MitraController extends Controller
             ], 400);
         }
 
+        DB::beginTransaction();
         try {
+            // Generate code
             $lastCode = DB::table('mitras')
                 ->whereNotNull('code')
                 ->orderBy('code', 'desc')
@@ -378,27 +381,21 @@ class Member_MitraController extends Controller
                 $newCode = str_pad($newCodeNumber, 10, '0', STR_PAD_LEFT);
             }
 
-            $referral_code = strtolower(Str::random(7));
-            $picture_profile = null;
-            if ($request->hasFile('picture_profile')) {
-                $picture_profile = UploadFile::file($request->file('picture_profile'), 'mitra/profile');
-            }
+            // Handle file uploads
+            $picture_profile = $request->hasFile('picture_profile') ? 
+                UploadFile::file($request->file('picture_profile'), 'mitra/profile') : null;
+                
+            $picture_ktp = $request->hasFile('picture_ktp') ? 
+                UploadFile::file($request->file('picture_ktp'), 'mitra/ktp') : null;
 
-            $picture_ktp = null;
-            if ($request->hasFile('picture_ktp')) {
-                $picture_ktp = UploadFile::file($request->file('picture_ktp'), 'mitra/ktp');
-            }
-
-            $loggedInMitra = Auth::guard('mitra')->user();
-            $codeMitra = $loggedInMitra->code ?? null;
-
+            // Create mitra
             $mitra = Mitra::create([
                 'code' => $newCode,
                 'username' => $request->username,
                 'password' => Hash::make($request->password),
-                'referral_code' => $referral_code,
+                'referral_code' => strtolower(Str::random(7)),
                 'level' => 'mitra',
-                'code_mitra' => $codeMitra,
+                'code_mitra' => $request->header('code_mitra'),
                 'name' => $request->name,
                 'NIK' => $request->NIK,
                 'sex' => $request->sex,
@@ -417,14 +414,17 @@ class Member_MitraController extends Controller
                 'status' => 'nonactive'
             ]);
 
+            DB::commit();
+
             return response()->json([
                 'status' => 'success',
                 'message' => 'Data Mitra berhasil ditambahkan',
                 'data' => $mitra
             ], 201);
-        } catch (\Exception $e) {
-            Log::error('Mitra Registration Error: ' . $e->getMessage());
 
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
             if (isset($picture_profile)) {
                 UploadFile::delete('mitra/profile', $picture_profile);
             }
@@ -432,9 +432,11 @@ class Member_MitraController extends Controller
                 UploadFile::delete('mitra/ktp', $picture_ktp);
             }
 
+            Log::error('Mitra Registration Error: ' . $e->getMessage());
+
             return response()->json([
                 'status' => 'error',
-                'message' => 'Terjadi kesalahan pada sistem. Silakan coba lagi.'
+                'message' => 'Terjadi kesalahan pada sistem'
             ], 500);
         }
     }
