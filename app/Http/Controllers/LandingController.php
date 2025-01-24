@@ -49,13 +49,14 @@ class LandingController extends Controller
         $sortField = $request->input('sort', 'tanggal_berangkat');
         $sortDirection = $request->input('direction', 'asc');
         $query->orderBy($sortField, $sortDirection);
-    
+
         $programs = $query->paginate(12)->appends($request->query());
         $categories = ProgramCategory::all();
         return view('landing.pages.all-program', compact('programs', 'categories'));
     }
 
-    public function allBerita(Request $request){
+    public function allBerita(Request $request)
+    {
         $query = News::query()->where('publish', 1);
         if ($request->filled('search')) {
             $query->where('name', 'like', '%' . $request->search . '%');
@@ -79,6 +80,7 @@ class LandingController extends Controller
         $program = Program::findOrFail($id);
         return response()->json($program);
     }
+    
     public function showNewsApi($id)
     {
         $news = News::findOrFail($id);
@@ -103,10 +105,10 @@ class LandingController extends Controller
         $sortField = $request->input('sort', 'tanggal_berangkat');
         $sortDirection = $request->input('direction', 'asc');
         $query->orderBy($sortField, $sortDirection);
-    
+
         $programs = $query->paginate(12);
         $categories = ProgramCategory::all();
-        
+
         return response()->json([
             'programs' => $programs,
             'categories' => $categories

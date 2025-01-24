@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Mitra;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use RealRashid\SweetAlert\Facades\Alert;
@@ -113,8 +114,8 @@ class Member_AuthController extends Controller
         $mitra->username = $request->username;
         $mitra->password = Hash::make($request->password);
         $mitra->referral_code = $this->generateReferralCode();
-        $mitra->code_category = 'default_category';
-        $mitra->code_cabang = 'default_cabang';
+        $mitra->code_category = null;
+        $mitra->code_cabang = null;
         $mitra->code_mitra = null;
         $mitra->level = 'mitra';
         $mitra->name = $request->name;
@@ -137,6 +138,48 @@ class Member_AuthController extends Controller
         $mitra->save();
 
         return response()->json(['message' => 'Registrasi mitra berhasil'], 201);
+    }
+
+    public function register(Request $request)
+    {
+        $request->validate([
+            'username' => 'required|unique:mitras,username',
+            'password' => 'required|min:8',
+            'name' => 'required',
+            'sex' => 'required|in:L,P',
+            'phone' => 'required|unique:mitras,phone',
+        ]);
+
+        $lastCode = DB::table('mitras')
+            ->whereNotNull('code')
+            ->orderBy('code', 'desc')
+            ->lockForUpdate()
+            ->value('code');
+
+        $newCodeNumber = ($lastCode ? intval($lastCode) + 1 : 1);
+        $newCode = str_pad($newCodeNumber, 10, '0', STR_PAD_LEFT);
+
+        while (DB::table('mitras')->where('code', $newCode)->exists()) {
+            $newCodeNumber++;
+            $newCode = str_pad($newCodeNumber, 10, '0', STR_PAD_LEFT);
+        }
+
+        Mitra::create([
+            'code' => $newCode,
+            'username' => $request->username,
+            'password' => bcrypt($request->password),
+            'referral_code' => strtolower(Str::random(7)),
+            'level' => 'mitra',
+            'name' => $request->name,
+            'sex' => $request->sex,
+            'phone' => $request->phone,
+            'status' => 'nonactive',
+        ]);
+
+        return response()->json([
+            'message' => 'Mitra berhasil didaftarkan',
+            'status' => 'success',
+        ]);
     }
 
     private function generateNewCode($lastCode)

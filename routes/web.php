@@ -31,7 +31,7 @@ Route::prefix('api')->group(function () {
     Route::get('dashboard', [Member_DashboardController::class, 'getDashboardData']);
     // Auth routes
     Route::post('/login', [Member_AuthController::class, 'loginApi']);
-    Route::post('/register', [Member_AuthController::class, 'registerApi']);
+    Route::post('/register', [Member_AuthController::class, 'register']);
 
     // Program routes
     Route::get('/programs', [Member_ProgramController::class, 'getPrograms']);
