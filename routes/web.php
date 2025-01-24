@@ -27,6 +27,7 @@ Route::get('/panduan/hapus-akun', [PanduanController::class, 'hapusAkun'])->name
 
 // JSON API routes
 Route::prefix('api')->group(function () {
+    // Dashboard Routes
     Route::get('dashboard', [Member_DashboardController::class, 'getDashboardData']);
     // Auth routes
     Route::post('/login', [Member_AuthController::class, 'loginApi']);
@@ -43,6 +44,9 @@ Route::prefix('api')->group(function () {
     // Mitra Routes
     Route::get('mitra', [Member_MitraController::class, 'getAllDataMitra']);
     Route::post('mitra/store', [Member_MitraController::class, 'storeMitraApi']);
+
+    // Customer Routes
+    Route::get('customer', [Member_CustomerController::class, 'getAllDataCustomer']);
 });
 // Protected routes
 Route::middleware(['mitra.auth'])->group(function () {

@@ -414,4 +414,76 @@ class Member_CustomerController extends Controller
             ], 500);
         }
     }
+
+    // JSON API
+    public function getAllDataCustomer(Request $request)
+    {
+        $codeMitra = $request->header('code_mitra');
+
+        $customers = Customer::with([
+            'category:code,name',
+            'cabang:code,name',
+            'city:code,name',
+            'province:code,name',
+            'program:code,name',
+            'mitra:code,name'
+        ])
+            ->where('code_mitra', $codeMitra)
+            ->select([
+                'id',
+                'code',
+                'username',
+                'name',
+                'phone',
+                'email',
+                'code_category',
+                'code_cabang',
+                'code_mitra',
+                'code_city',
+                'code_province',
+                'status',
+                'status_prospek',
+                'status_jamaah',
+                'status_alumni',
+                'address',
+                'code_program',
+                'NIK',
+                'birth_place',
+                'birth_date',
+                'picture_ktp'
+            ])
+            ->get();
+
+        if ($customers->isEmpty()) {
+            return response()->json(['status' => false, 'message' => 'Data customer tidak ditemukan', 'data' => null], 404);
+        }
+
+        $transformedData = $customers->map(function ($item) {
+            return [
+                'id' => $item->id,
+                'code' => $item->code,
+                'username' => $item->username,
+                'name' => $item->name,
+                'phone' => $item->phone,
+                'email' => $item->email,
+                'status' => $item->status,
+                'status_prospek' => $item->status_prospek,
+                'status_jamaah' => $item->status_jamaah,
+                'status_alumni' => $item->status_alumni,
+                'address' => $item->address,
+                'NIK' => $item->NIK,
+                'birth_place' => $item->birth_place,
+                'birth_date' => $item->birth_date,
+                'picture_ktp' => $item->picture_ktp,
+                'category' => $item->category ? ['code' => $item->category->code, 'name' => $item->category->name] : null,
+                'cabang' => $item->cabang ? ['code' => $item->cabang->code, 'name' => $item->cabang->name] : null,
+                'city' => $item->city ? ['code' => $item->city->code, 'name' => $item->city->name] : null,
+                'province' => $item->province ? ['code' => $item->province->code, 'name' => $item->province->name] : null,
+                'program' => $item->program ? ['code' => $item->program->code, 'name' => $item->program->name] : null,
+                'mitra' => $item->mitra ? ['code' => $item->mitra->code, 'name' => $item->mitra->name] : null,
+            ];
+        });
+
+        return response()->json(['status' => true, 'message' => 'Data customer berhasil diambil', 'data' => $transformedData], 200);
+    }
 }
