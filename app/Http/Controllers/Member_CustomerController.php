@@ -486,4 +486,133 @@ class Member_CustomerController extends Controller
 
         return response()->json(['status' => true, 'message' => 'Data customer berhasil diambil', 'data' => $transformedData], 200);
     }
+
+    public function getRelationalData()
+    {
+        try {
+            $cabang = Cabang::all();
+            $city = City::all();
+            $province = Province::all();
+            $category = CustomerCategories::all();
+            $program = Program::all();
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Data relasi berhasil diambil',
+                'cabang' => $cabang,
+                'city' => $city,
+                'province' => $province,
+                'category' => $category,
+                'program' => $program
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Gagal mengambil data relasi: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+
+    public function storeCustomerApi(Request $request)
+    {
+        $messages = [
+            'code_mitra.required' => 'Code mitra tidak ditemukan',
+            'username.required' => 'Username wajib diisi',
+            'username.unique' => 'Username sudah digunakan',
+            'email.email' => 'Format email tidak valid',
+            'email.unique' => 'Email sudah digunakan',
+            'password.required' => 'Password wajib diisi',
+            'password.min' => 'Password minimal 6 karakter',
+            'name.required' => 'Nama wajib diisi',
+            'phone.required' => 'Nomor telepon wajib diisi',
+            'picture_ktp.image' => 'File foto KTP harus berupa gambar',
+            'picture_ktp.mimes' => 'Format foto KTP harus jpeg, png, atau jpg',
+            'picture_ktp.max' => 'Ukuran foto KTP maksimal 2MB',
+        ];
+
+        $validator = Validator::make($request->all(), [
+            'code_mitra' => 'required',
+            'username' => 'required|unique:customers,username',
+            'email' => 'nullable|email|unique:customers,email',
+            'password' => 'required|min:6',
+            'name' => 'required',
+            'phone' => 'required',
+            'picture_ktp' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+        ], $messages);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => $validator->errors()->first()
+            ], 400);
+        }
+
+        DB::beginTransaction();
+        try {
+            $lastCode = DB::table('customers')
+                ->whereNotNull('code')
+                ->orderBy('code', 'desc')
+                ->lockForUpdate()
+                ->value('code');
+
+            $newCodeNumber = ($lastCode ? intval($lastCode) + 1 : 1);
+            $newCode = str_pad($newCodeNumber, 10, '0', STR_PAD_LEFT);
+
+            while (DB::table('customers')->where('code', $newCode)->exists()) {
+                $newCodeNumber++;
+                $newCode = str_pad($newCodeNumber, 10, '0', STR_PAD_LEFT);
+            }
+
+            $picture_ktp = $request->hasFile('picture_ktp') ?
+                UploadFile::file($request->file('picture_ktp'), 'customer/ktp') : null;
+
+            $customer = Customer::create([
+                'code' => $newCode,
+                'username' => $request->username,
+                'password' => Hash::make($request->password),
+                'name' => $request->name,
+                'phone' => $request->phone,
+                'job' => $request->job,
+                'email' => $request->email,
+                'code_category' => $request->code_category,
+                'code_cabang' => $request->code_cabang,
+                'code_mitra' => $request->code_mitra,
+                'code_city' => $request->code_city,
+                'code_province' => $request->code_province,
+                'note' => $request->note,
+                'status' => 'prospek',
+                'status_prospek' => 'cold',
+                'status_jamaah' => 'nonactive',
+                'status_alumni' => 'nonactive',
+                'address' => $request->address,
+                'code_program' => $request->code_program,
+                'NIK' => $request->NIK,
+                'birth_place' => $request->birth_place,
+                'birth_date' => $request->birth_date,
+                'picture_ktp' => $picture_ktp,
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Data Customer berhasil ditambahkan',
+                'data' => $customer
+            ], 201);
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            if (isset($picture_ktp)) {
+                UploadFile::delete('customer/ktp', $picture_ktp);
+            }
+
+            Log::error('Customer Registration Error: ' . $e->getMessage());
+
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Terjadi kesalahan pada sistem'
+            ], 500);
+        }
+    }
 }

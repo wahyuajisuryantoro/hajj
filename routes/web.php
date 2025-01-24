@@ -47,6 +47,8 @@ Route::prefix('api')->group(function () {
 
     // Customer Routes
     Route::get('customer', [Member_CustomerController::class, 'getAllDataCustomer']);
+    Route::get('customer/relation', [Member_CustomerController::class, 'getRelationalData']);
+    Route::post('customer/store', [Member_CustomerController::class, 'storeCustomerApi']);
 });
 // Protected routes
 Route::middleware(['mitra.auth'])->group(function () {
