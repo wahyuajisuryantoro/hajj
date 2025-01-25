@@ -50,7 +50,11 @@ Route::prefix('api')->group(function () {
     Route::get('customer/relation', [Member_CustomerController::class, 'getRelationalData']);
     Route::post('customer/store', [Member_CustomerController::class, 'storeCustomerApi']);
 
+    // Jamaah Routes
     Route::get('jamaah', [Member_JamaahController::class, 'getAllDataJamaah']);
+
+    // Ujroh/Bonus Routes
+    Route::get('ujroh', [Member_BonusController::class, 'getSaldoBonus']);
 
     // Account Routes
     Route::post('update-profile', [Member_AccountController::class, 'updateProfileApi']);
