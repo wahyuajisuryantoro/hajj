@@ -156,8 +156,6 @@ class Member_MitraController extends Controller
 
             $loggedInMitra = Auth::guard('mitra')->user();
             $loggedInCode = $loggedInMitra->code ?? null;
-
-            // Ambil parameter filter dari request
             $filterLevel = $request->get('level');
             $filterStatus = $request->get('status');
 
@@ -183,12 +181,10 @@ class Member_MitraController extends Controller
                     }
                 });
 
-            // Terapkan filter Level jika ada
             if (!empty($filterLevel)) {
                 $data->where('level', $filterLevel);
             }
 
-            // Terapkan filter Status jika ada
             if (!empty($filterStatus)) {
                 $data->where('status', $filterStatus);
             }
@@ -206,8 +202,6 @@ class Member_MitraController extends Controller
                 ->editColumn('level', function ($row) {
                     $badgeClass = 'bg-label-primary';
                     $levelText = ucfirst($row->level);
-
-                    // Anda dapat menyesuaikan warna badge berdasarkan level
                     switch ($row->level) {
                         case 'mitra':
                             $badgeClass = 'bg-label-info';

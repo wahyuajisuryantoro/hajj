@@ -49,6 +49,9 @@ Route::prefix('api')->group(function () {
     Route::get('customer', [Member_CustomerController::class, 'getAllDataCustomer']);
     Route::get('customer/relation', [Member_CustomerController::class, 'getRelationalData']);
     Route::post('customer/store', [Member_CustomerController::class, 'storeCustomerApi']);
+
+    // Account Routes
+    Route::post('update-profile', [Member_AccountController::class, 'updateProfileApi']);
 });
 // Protected routes
 Route::middleware(['mitra.auth'])->group(function () {

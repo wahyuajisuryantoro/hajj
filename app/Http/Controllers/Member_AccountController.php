@@ -2,19 +2,20 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Mitra;
 use App\Helpers\UploadFile;
+use App\Models\Mitra;
+use App\Services\ProfilePictureService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
-use App\Services\ProfilePictureService;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 use RealRashid\SweetAlert\Facades\Alert;
 
 class Member_AccountController extends Controller
 {
 
-  
+
     public function settings()
     {
         $title = "Pengaturan Akun";
@@ -29,22 +30,23 @@ class Member_AccountController extends Controller
         return view('pages.account.info', compact('title'));
     }
 
-    public function updatePasswordIndex(){
+    public function updatePasswordIndex()
+    {
         $title = "Update Password";
         $mitra = Auth::guard('mitra')->user();
         return view('pages.account.content.update-password', compact('title', 'mitra'));
     }
 
-   
+
 
     public function updateProfile(Request $request)
     {
         Log::info('Update Profile initiated by user ID: ' . Auth::guard('mitra')->id());
-    
+
         try {
             $mitra = Auth::guard('mitra')->user();
             Log::debug('Authenticated Mitra:', ['mitra_id' => $mitra->id]);
-    
+
             // Validasi input (tanpa picture_profile)
             Log::info('Validating input for user ID: ' . $mitra->id);
             $request->validate([
@@ -56,8 +58,6 @@ class Member_AccountController extends Controller
                 'address' => 'required|string',
             ]);
             Log::info('Validation passed for user ID: ' . $mitra->id);
-    
-            // Update informasi dasar
             Log::info('Updating basic information for user ID: ' . $mitra->id);
             $mitra->update([
                 'name' => $request->name,
@@ -67,26 +67,17 @@ class Member_AccountController extends Controller
                 'birth_date' => $request->birth_date,
                 'address' => $request->address,
             ]);
-    
-            // Jika foto profil diubah, panggil metode untuk mengubah foto
+
             if ($request->hasFile('picture_profile')) {
-                // Memanggil metode upload foto profil (asumsi sudah dipisahkan)
                 $this->profilePictureService->uploadProfilePicture($request->file('picture_profile'), $mitra);
             }
-    
-            // Menambahkan SweetAlert success setelah update berhasil
+
             Alert::success('Success', 'Your profile has been updated successfully!');
             Log::info('Profile update completed for user ID: ' . $mitra->id);
-    
-            // Redirect kembali dengan status sukses
             return redirect()->back();
-            
         } catch (\Exception $e) {
-            // Menambahkan SweetAlert error jika ada kesalahan
             Log::error('Error updating profile: ' . $e->getMessage());
             Alert::error('Error', 'An error occurred while updating your profile.');
-            
-            // Redirect kembali dengan status error
             return redirect()->back();
         }
     }
@@ -100,10 +91,10 @@ class Member_AccountController extends Controller
     public function updateProfilePicture(Request $request)
     {
         Log::info('Update Profile Picture initiated by user ID: ' . Auth::guard('mitra')->id());
-    
+
         try {
             $mitra = Auth::guard('mitra')->user();
-    
+
             if (!$mitra) {
                 Log::error('Authenticated user is null.');
                 return response()->json([
@@ -111,34 +102,31 @@ class Member_AccountController extends Controller
                     'message' => 'Pengguna tidak terautentikasi.'
                 ], 401);
             }
-    
+
             Log::debug('Authenticated Mitra:', ['mitra_id' => $mitra->id]);
-    
+
             // Validasi input khusus foto profil
             Log::info('Validating profile picture for user ID: ' . $mitra->id);
             $request->validate([
                 'picture_profile' => 'required|image|mimes:jpeg,png,jpg|max:2048',
             ]);
             Log::info('Validation passed for profile picture of user ID: ' . $mitra->id);
-    
-            // Menangani unggahan foto profil menggunakan service
             $this->profilePictureService->uploadProfilePicture($request->file('picture_profile'), $mitra);
-    
+
             Log::info('Profile picture update successful for user ID: ' . $mitra->id);
-    
+
             return response()->json([
                 'success' => true,
                 'message' => 'Foto profil berhasil diperbarui',
                 'data' => $mitra
             ]);
-    
         } catch (\Exception $e) {
             // Menangani error
             Log::error('Error updating profile picture for user ID: ' . Auth::guard('mitra')->id(), [
                 'error_message' => $e->getMessage(),
                 'stack_trace' => $e->getTraceAsString()
             ]);
-    
+
             return response()->json([
                 'success' => false,
                 'message' => 'Terjadi kesalahan: ' . $e->getMessage()
@@ -151,7 +139,7 @@ class Member_AccountController extends Controller
     {
         $title = "Edit Akun Bank";
         $mitra = Auth::guard('mitra')->user();
-        return view('pages.account.content.bank', compact('title','mitra'));
+        return view('pages.account.content.bank', compact('title', 'mitra'));
     }
 
     public function updateBankAccount(Request $request)
@@ -175,14 +163,12 @@ class Member_AccountController extends Controller
 
             // Flash message success
             return redirect()->route('account.edit-bank')->with('success_bank', 'Informasi bank berhasil diperbarui.');
-
         } catch (\Illuminate\Validation\ValidationException $e) {
             // Redirect kembali dengan error validation
             return redirect()->route('account.edit-bank')
-                             ->withErrors($e->errors())
-                             ->withInput()
-                             ->with('error_bank', 'Terjadi kesalahan validasi.');
-
+                ->withErrors($e->errors())
+                ->withInput()
+                ->with('error_bank', 'Terjadi kesalahan validasi.');
         } catch (\Exception $e) {
             // Log error dan redirect dengan error message
             Log::error('Error updating bank account for user ID: ' . Auth::guard('mitra')->id(), [
@@ -198,7 +184,7 @@ class Member_AccountController extends Controller
     {
         try {
             $mitra = Auth::guard('mitra')->user();
-            
+
             return response()->json([
                 'success' => true,
                 'data' => [
@@ -207,7 +193,6 @@ class Member_AccountController extends Controller
                     'bank_name' => $mitra->bank_name
                 ]
             ]);
-
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -258,7 +243,6 @@ class Member_AccountController extends Controller
             // Jika berhasil
             Alert::success('Berhasil', 'Password berhasil diperbarui');
             return redirect()->back();
-
         } catch (\Illuminate\Validation\ValidationException $e) {
             // Menangani error validasi
             Alert::error('Gagal', 'Silakan perbaiki kesalahan pada form.');
@@ -270,10 +254,55 @@ class Member_AccountController extends Controller
         }
     }
 
-   
+    // JSON API ENDPOINT
+    public function updateProfileApi(Request $request) 
+    {
+       try {
+           $request->validate([
+               'code_mitra' => 'required|exists:mitras,code',
+               'name' => 'required|string|max:255',
+               'phone' => 'required|string|max:20',
+               'email' => 'required|email|unique:mitras,email,' . $request->code_mitra,
+               'birth_place' => 'required|string|max:100',
+               'birth_date' => 'required|date',
+               'address' => 'required|string',
+               'picture_profile' => 'nullable|image|mimes:jpeg,png,jpg|max:2048'
+           ]);
     
+           $mitra = Mitra::where('code', $request->code_mitra)->first();
+           
+           $mitra->update([
+               'name' => $request->name,
+               'phone' => $request->phone,
+               'email' => $request->email, 
+               'birth_place' => $request->birth_place,
+               'birth_date' => $request->birth_date,
+               'address' => $request->address,
+           ]);
     
-
+           if ($request->hasFile('picture_profile')) {
+               $this->profilePictureService->uploadProfilePicture($request->file('picture_profile'), $mitra);
+           }
+    
+           return response()->json([
+               'success' => true,
+               'message' => 'Profile updated successfully',
+               'data' => $mitra->fresh()
+           ]);
+    
+       } catch (ValidationException $e) {
+           return response()->json([
+               'success' => false,
+               'message' => 'Validation error',
+               'errors' => $e->errors()
+           ], 422);
+       } catch (\Exception $e) {
+           return response()->json([
+               'success' => false,
+               'message' => 'Failed to update profile'
+           ], 500);
+       }
+    }
     public function deactivateAccount(Request $request)
     {
         try {
@@ -294,7 +323,6 @@ class Member_AccountController extends Controller
                 'success' => true,
                 'message' => 'Akun berhasil dinonaktifkan'
             ]);
-
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
