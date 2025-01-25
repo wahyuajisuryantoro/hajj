@@ -52,6 +52,8 @@ Route::prefix('api')->group(function () {
 
     // Account Routes
     Route::post('update-profile', [Member_AccountController::class, 'updateProfileApi']);
+    Route::post('update-password', [Member_AccountController::class, 'updatePasswordApi']);
+    
 });
 // Protected routes
 Route::middleware(['mitra.auth'])->group(function () {

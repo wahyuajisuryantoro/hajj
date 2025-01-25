@@ -15,7 +15,6 @@ use RealRashid\SweetAlert\Facades\Alert;
 class Member_AccountController extends Controller
 {
 
-
     public function settings()
     {
         $title = "Pengaturan Akun";
@@ -47,7 +46,7 @@ class Member_AccountController extends Controller
             $mitra = Auth::guard('mitra')->user();
             Log::debug('Authenticated Mitra:', ['mitra_id' => $mitra->id]);
 
-            // Validasi input (tanpa picture_profile)
+
             Log::info('Validating input for user ID: ' . $mitra->id);
             $request->validate([
                 'name' => 'required|string|max:255',
@@ -105,7 +104,7 @@ class Member_AccountController extends Controller
 
             Log::debug('Authenticated Mitra:', ['mitra_id' => $mitra->id]);
 
-            // Validasi input khusus foto profil
+
             Log::info('Validating profile picture for user ID: ' . $mitra->id);
             $request->validate([
                 'picture_profile' => 'required|image|mimes:jpeg,png,jpg|max:2048',
@@ -121,7 +120,7 @@ class Member_AccountController extends Controller
                 'data' => $mitra
             ]);
         } catch (\Exception $e) {
-            // Menangani error
+
             Log::error('Error updating profile picture for user ID: ' . Auth::guard('mitra')->id(), [
                 'error_message' => $e->getMessage(),
                 'stack_trace' => $e->getTraceAsString()
@@ -147,30 +146,30 @@ class Member_AccountController extends Controller
         try {
             $mitra = Auth::guard('mitra')->user();
 
-            // Validasi input
+
             $request->validate([
                 'bank' => 'required|string|max:50',
                 'bank_number' => 'required|string|max:20',
                 'bank_name' => 'required|string|max:255'
             ]);
 
-            // Update informasi bank
+
             $mitra->update([
                 'bank' => $request->bank,
                 'bank_number' => $request->bank_number,
                 'bank_name' => $request->bank_name
             ]);
 
-            // Flash message success
+
             return redirect()->route('account.edit-bank')->with('success_bank', 'Informasi bank berhasil diperbarui.');
         } catch (\Illuminate\Validation\ValidationException $e) {
-            // Redirect kembali dengan error validation
+
             return redirect()->route('account.edit-bank')
                 ->withErrors($e->errors())
                 ->withInput()
                 ->with('error_bank', 'Terjadi kesalahan validasi.');
         } catch (\Exception $e) {
-            // Log error dan redirect dengan error message
+
             Log::error('Error updating bank account for user ID: ' . Auth::guard('mitra')->id(), [
                 'error_message' => $e->getMessage(),
                 'stack_trace' => $e->getTraceAsString()
@@ -221,48 +220,49 @@ class Member_AccountController extends Controller
         try {
             $mitra = Auth::guard('mitra')->user();
 
-            // Validasi input
+
             $request->validate([
                 'current_password' => 'required|string',
                 'new_password' => 'required|string|min:6|different:current_password',
                 'confirm_password' => 'required|string|same:new_password'
             ]);
 
-            // Cek apakah current_password sesuai dengan password saat ini
+
             if (!Hash::check($request->current_password, $mitra->password)) {
-                // Jika password salah
+
                 Alert::error('Gagal', 'Password saat ini tidak sesuai');
                 return redirect()->back()->withInput();
             }
 
-            // Update password baru
+
             $mitra->update([
                 'password' => Hash::make($request->new_password)
             ]);
 
-            // Jika berhasil
+
             Alert::success('Berhasil', 'Password berhasil diperbarui');
             return redirect()->back();
         } catch (\Illuminate\Validation\ValidationException $e) {
-            // Menangani error validasi
+
             Alert::error('Gagal', 'Silakan perbaiki kesalahan pada form.');
             return redirect()->back()->withErrors($e->errors())->withInput();
         } catch (\Exception $e) {
-            // Menangani error lainnya
+
             Alert::error('Terjadi Kesalahan', 'Gagal memperbarui password');
             return redirect()->back()->withInput();
         }
     }
 
-    // JSON API ENDPOINT
+    // JSON
+
     public function updateProfileApi(Request $request)
     {
         try {
-            // Validasi awal untuk code_mitra
+
             $request->validate([
                 'code_mitra' => 'required|exists:mitras,code'
             ]);
-            
+
             $mitra = Mitra::where('code', $request->code_mitra)->first();
 
             if ($request->has('name')) {
@@ -320,6 +320,48 @@ class Member_AccountController extends Controller
         }
     }
 
+    public function updatePasswordApi(Request $request)
+    {
+        try {
+            $request->validate([
+                'code_mitra' => 'required|exists:mitras,code',
+                'current_password' => 'required|string',
+                'new_password' => 'required|string|min:6|different:current_password',
+                'confirm_password' => 'required|string|same:new_password'
+            ]);
+
+            $mitra = Mitra::where('code', $request->code_mitra)->first();
+
+            if (!Hash::check($request->current_password, $mitra->password)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Password yang anda masukkan salah'
+                ], 422);
+            }
+
+            $mitra->update([
+                'password' => Hash::make($request->new_password)
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Password updated successfully'
+            ]);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation error',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
 
     public function deactivateAccount(Request $request)
     {
@@ -330,7 +372,7 @@ class Member_AccountController extends Controller
                 'confirmation' => 'required|accepted'
             ]);
 
-            // Deactivate account
+
             $mitra->update([
                 'status' => 'nonactive'
             ]);
