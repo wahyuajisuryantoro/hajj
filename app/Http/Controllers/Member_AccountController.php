@@ -255,54 +255,66 @@ class Member_AccountController extends Controller
     }
 
     // JSON API ENDPOINT
-    public function updateProfileApi(Request $request) 
+    public function updateProfileApi(Request $request)
     {
-       try {
-           $request->validate([
-               'code_mitra' => 'required|exists:mitras,code',
-               'name' => 'required|string|max:255',
-               'phone' => 'required|string|max:20',
-               'email' => 'required|email|unique:mitras,email,' . $request->code_mitra,
-               'birth_place' => 'required|string|max:100',
-               'birth_date' => 'required|date',
-               'address' => 'required|string',
-               'picture_profile' => 'nullable|image|mimes:jpeg,png,jpg|max:2048'
-           ]);
-    
-           $mitra = Mitra::where('code', $request->code_mitra)->first();
-           
-           $mitra->update([
-               'name' => $request->name,
-               'phone' => $request->phone,
-               'email' => $request->email, 
-               'birth_place' => $request->birth_place,
-               'birth_date' => $request->birth_date,
-               'address' => $request->address,
-           ]);
-    
-           if ($request->hasFile('picture_profile')) {
-               $this->profilePictureService->uploadProfilePicture($request->file('picture_profile'), $mitra);
-           }
-    
-           return response()->json([
-               'success' => true,
-               'message' => 'Profile updated successfully',
-               'data' => $mitra->fresh()
-           ]);
-    
-       } catch (ValidationException $e) {
-           return response()->json([
-               'success' => false,
-               'message' => 'Validation error',
-               'errors' => $e->errors()
-           ], 422);
-       } catch (\Exception $e) {
-           return response()->json([
-               'success' => false,
-               'message' => 'Failed to update profile'
-           ], 500);
-       }
+        try {
+            $request->validate([
+                'code_mitra' => 'required|exists:mitras,code'
+            ]);
+            $mitra = Mitra::where('code', $request->code_mitra)->first();
+
+            if ($request->has('name')) {
+                $request->validate(['name' => 'string|max:255']);
+                $mitra->name = $request->name;
+            }
+
+            if ($request->has('phone')) {
+                $request->validate(['phone' => 'string|max:20']);
+                $mitra->phone = $request->phone;
+            }
+
+            if ($request->has('email')) {
+                $request->validate(['email' => 'email|max:255']);
+                $mitra->email = $request->email;
+            }
+
+            if ($request->has('birth_place')) {
+                $request->validate(['birth_place' => 'string|max:255']);
+                $mitra->birth_place = $request->birth_place;
+            }
+
+            if ($request->has('birth_date')) {
+                $request->validate(['birth_date' => 'date']);
+                $mitra->birth_date = $request->birth_date;
+            }
+
+            if ($request->has('address')) {
+                $request->validate(['address' => 'string|max:500']);
+                $mitra->address = $request->address;
+            }
+
+            $mitra->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Profile updated successfully',
+                'data' => $mitra->fresh()
+            ]);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation error',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
+
     public function deactivateAccount(Request $request)
     {
         try {
