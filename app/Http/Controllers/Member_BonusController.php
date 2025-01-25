@@ -74,21 +74,34 @@ class Member_BonusController extends Controller
             ->where('status', 'debit')
             ->sum('value');
             
-        $totalCredit = Ujroh::where('code_mitra', $codeMitra) 
+        $totalCredit = Ujroh::where('code_mitra', $codeMitra)
             ->where('status', 'credit')
             ->sum('value');
             
         $saldoBonus = $totalDebit - $totalCredit;
+     
+        $mutasi = Ujroh::with('category')
+            ->where('code_mitra', $codeMitra)
+            ->select('code', 'code_category', 'value', 'status', 'desc', 'tanggal_transaksi')
+            ->orderBy('tanggal_transaksi', 'desc')
+            ->get()
+            ->map(function($item) {
+                return [
+                    'code' => $item->code,
+                    'category_name' => $item->category->name ?? 'Unknown',
+                    'value' => $item->value,
+                    'status' => $item->status,
+                    'desc' => $item->desc,
+                    'tanggal_transaksi' => $item->tanggal_transaksi
+                ];
+            });
         
         return response()->json([
             'status' => true,
             'data' => [
                 'total_bonus' => $totalDebit,
                 'saldo_bonus' => $saldoBonus,
-                'mutasi' => Ujroh::where('code_mitra', $codeMitra)
-                    ->select('code', 'code_category', 'value', 'status', 'desc', 'tanggal_transaksi')
-                    ->orderBy('tanggal_transaksi', 'desc')
-                    ->get()
+                'mutasi' => $mutasi
             ]
         ]);
      }

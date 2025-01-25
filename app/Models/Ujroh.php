@@ -51,6 +51,10 @@ class Ujroh extends Model
         return $this->belongsTo(Program::class, 'code_program', 'code');
     }
 
+    public function category() {
+        return $this->belongsTo(UjrohCategory::class, 'code_category', 'code');
+    }
+
     // Scopes
     public function scopeDebit($query)
     {
