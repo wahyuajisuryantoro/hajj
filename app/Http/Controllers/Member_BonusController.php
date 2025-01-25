@@ -65,4 +65,31 @@ class Member_BonusController extends Controller
             'bonusPercentage'
         ));
     }
+
+    // JSON API
+    public function getSaldoBonus(Request $request) {
+        $codeMitra = $request->header('code_mitra');
+        
+        $totalDebit = Ujroh::where('code_mitra', $codeMitra)
+            ->where('status', 'debit')
+            ->sum('value');
+            
+        $totalCredit = Ujroh::where('code_mitra', $codeMitra) 
+            ->where('status', 'credit')
+            ->sum('value');
+            
+        $saldoBonus = $totalDebit - $totalCredit;
+        
+        return response()->json([
+            'status' => true,
+            'data' => [
+                'total_bonus' => $totalDebit,
+                'saldo_bonus' => $saldoBonus,
+                'mutasi' => Ujroh::where('code_mitra', $codeMitra)
+                    ->select('code', 'code_category', 'value', 'status', 'desc', 'tanggal_transaksi')
+                    ->orderBy('tanggal_transaksi', 'desc')
+                    ->get()
+            ]
+        ]);
+     }
 }
