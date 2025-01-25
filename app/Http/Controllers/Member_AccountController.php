@@ -258,9 +258,11 @@ class Member_AccountController extends Controller
     public function updateProfileApi(Request $request)
     {
         try {
+            // Validasi awal untuk code_mitra
             $request->validate([
                 'code_mitra' => 'required|exists:mitras,code'
             ]);
+            
             $mitra = Mitra::where('code', $request->code_mitra)->first();
 
             if ($request->has('name')) {
@@ -293,6 +295,9 @@ class Member_AccountController extends Controller
                 $mitra->address = $request->address;
             }
 
+            if ($request->hasFile('picture_profile')) {
+                $this->profilePictureService->uploadProfilePicture($request->file('picture_profile'), $mitra);
+            }
             $mitra->save();
 
             return response()->json([
@@ -314,6 +319,7 @@ class Member_AccountController extends Controller
             ], 500);
         }
     }
+
 
     public function deactivateAccount(Request $request)
     {
