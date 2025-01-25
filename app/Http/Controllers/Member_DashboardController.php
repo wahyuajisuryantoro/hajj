@@ -210,19 +210,23 @@ class Member_DashboardController extends Controller
         if (!$codeMitra) {
             return response()->json(['status' => false, 'message' => 'Code mitra tidak ditemukan'], 400);
         }
+        
         $totalMitra = Mitra::where('code_mitra', $codeMitra)->count();
         $totalJamaah = Jamaah::where('code_mitra', $codeMitra)->count();
         $totalCustomer = Customer::where('code_mitra', $codeMitra)->count();
         $totalBonus = Ujroh::byMitra($codeMitra)->debit()->sum('value');
-
+        $totalTransfer = Ujroh::byMitra($codeMitra)->credit()->sum('value');
+        $saldoBonus = $totalBonus - $totalTransfer;
+    
         return response()->json([
             'status' => true,
             'message' => 'Data dashboard berhasil diambil',
             'data' => [
                 'total_mitra' => $totalMitra,
-                'total_jamaah' => $totalJamaah,
+                'total_jamaah' => $totalJamaah, 
                 'total_customer' => $totalCustomer,
-                'total_bonus' => $totalBonus
+                'total_bonus' => $totalBonus,
+                'saldo_bonus' => $saldoBonus
             ]
         ]);
     }
