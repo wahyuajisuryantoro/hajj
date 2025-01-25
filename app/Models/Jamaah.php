@@ -24,7 +24,7 @@ class Jamaah extends Model
         'total_payment',
         'code_city',
         'code_province',
-        'code_customer', 
+        'code_customer',
         'code_program',
         'code_cabang',
         'code_mitra',
@@ -61,6 +61,26 @@ class Jamaah extends Model
     public function program()
     {
         return $this->belongsTo(Program::class, 'code_program', 'code');
+    }
+
+    public function city()
+    {
+        return $this->belongsTo(City::class, 'code_city', 'code');
+    }
+
+    public function province()
+    {
+        return $this->belongsTo(Province::class, 'code_province', 'code');
+    }
+
+    public function cabang()
+    {
+        return $this->belongsTo(Cabang::class, 'code_cabang', 'code');
+    }
+
+    public function customer()
+    {
+        return $this->belongsTo(Customer::class, 'code_customer', 'code');
     }
 
     // Scope untuk filter jamaah aktif
@@ -116,6 +136,4 @@ class Jamaah extends Model
     {
         return 'Rp ' . number_format($this->total_payment, 0, ',', '.');
     }
-
-
 }

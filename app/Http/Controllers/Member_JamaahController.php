@@ -104,4 +104,82 @@ class Member_JamaahController extends Controller
         $jamaah = Jamaah::findOrFail($id);
         return view('pages.jamaah.detail-jamaah', compact('title', 'jamaah'));
     }
+
+
+    // JSON API
+    public function getAllDataJamaah(Request $request)
+    {
+        $codeMitra = $request->header('code_mitra');
+
+        $jamaahs = Jamaah::with([
+            'city:code,name',
+            'province:code,name',
+            'program:code,name',
+            'cabang:code,name',
+            'customer:code,name'
+        ])
+            ->where('code_mitra', $codeMitra)
+            ->select([
+                'id',
+                'code',
+                'name',
+                'phone',
+                'email',
+                'status',
+                'picture_profile',
+                'picture_ktp',
+                'code_city',
+                'code_province',
+                'code_program',
+                'code_cabang',
+                'code_customer',
+                'status_payment',
+                'status_berangkat',
+                'date_program',
+                'value',
+                'total_payment',
+                'job',
+                'desc'
+            ])
+            ->get();
+
+        if ($jamaahs->isEmpty()) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Data jamaah tidak ditemukan',
+                'data' => null
+            ], 404);
+        }
+
+        $transformedData = $jamaahs->map(function ($item) {
+            return [
+                'id' => $item->id,
+                'code' => $item->code,
+                'name' => $item->name,
+                'phone' => $item->phone,
+                'email' => $item->email,
+                'status' => $item->status,
+                'picture_profile' => $item->picture_profile,
+                'picture_ktp' => $item->picture_ktp,
+                'status_payment' => $item->status_payment,
+                'status_berangkat' => $item->status_berangkat,
+                'date_program' => $item->date_program,
+                'value' => $item->value,
+                'total_payment' => $item->total_payment,
+                'job' => $item->job,
+                'desc' => $item->desc,
+                'city' => $item->city ? ['code' => $item->city->code, 'name' => $item->city->name] : null,
+                'province' => $item->province ? ['code' => $item->province->code, 'name' => $item->province->name] : null,
+                'program' => $item->program ? ['code' => $item->program->code, 'name' => $item->program->name] : null,
+                'cabang' => $item->cabang ? ['code' => $item->cabang->code, 'name' => $item->cabang->name] : null,
+                'customer' => $item->customer ? ['code' => $item->customer->code, 'name' => $item->customer->name] : null,
+            ];
+        });
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Data jamaah berhasil diambil',
+            'data' => $transformedData
+        ], 200);
+    }
 }

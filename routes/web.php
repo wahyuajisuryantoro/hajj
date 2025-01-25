@@ -50,6 +50,8 @@ Route::prefix('api')->group(function () {
     Route::get('customer/relation', [Member_CustomerController::class, 'getRelationalData']);
     Route::post('customer/store', [Member_CustomerController::class, 'storeCustomerApi']);
 
+    Route::get('jamaah', [Member_JamaahController::class, 'getAllDataJamaah']);
+
     // Account Routes
     Route::post('update-profile', [Member_AccountController::class, 'updateProfileApi']);
     Route::post('update-password', [Member_AccountController::class, 'updatePasswordApi']);
