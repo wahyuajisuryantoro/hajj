@@ -50,6 +50,9 @@
                             Panduan
                         </a>
                         <ul class="dropdown-menu" aria-labelledby="panduanDropdown">
+                            <li><a class="dropdown-item" href="{{ route('panduan.kebijakan-privasi') }}">Privasi dan Kebijakan</a></li>
+                        </ul>
+                        <ul class="dropdown-menu" aria-labelledby="panduanDropdown">
                             <li><a class="dropdown-item" href="{{ route('panduan.hapus-akun') }}">Hapus Akun</a></li>
                         </ul>
                     </li>

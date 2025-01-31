@@ -24,6 +24,7 @@ Route::get('/news/{id}', [LandingController::class, 'showNews'])->name('news.sho
 Route::get('/programs', [LandingController::class, 'allPrograms'])->name('programs.index');
 Route::get('/berita', [LandingController::class, 'allBerita'])->name('news.index');
 Route::get('/panduan/hapus-akun', [PanduanController::class, 'hapusAkun'])->name('panduan.hapus-akun');
+Route::get('/panduan/kebijakan-privasi', [PanduanController::class, 'kebijakanPrivasi'])->name('panduan.kebijakan-privasi');
 
 // JSON API routes
 Route::prefix('api')->group(function () {

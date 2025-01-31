@@ -10,4 +10,9 @@ class PanduanController extends Controller
     {
         return view('landing.pages.hapus-akun');
     }
+
+    public function kebijakanPrivasi()
+    {
+        return view('landing.pages.kebijakan-privasi');
+    }
 }
