@@ -48,10 +48,11 @@
                         </div>
                         <span>{{ $guide['title'] }}</span>
                     </div>
-                    <a href="{{ route('download.guide', ['file' => $guide['file']]) }}" 
-                       class="download-link">
-                        <i class="mdi mdi-download text-primary"></i>
-                    </a>
+                     <a href="{{ asset('documents/' . $guide['file']) }}" 
+                   class="download-link"
+                   download>
+                    <i class="mdi mdi-download text-primary"></i>
+                </a>
                 </div>
             @endforeach
         </div>
