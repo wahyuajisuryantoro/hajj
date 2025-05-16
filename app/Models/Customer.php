@@ -42,6 +42,23 @@ class Customer extends Model
         return $this->belongsTo(Mitra::class, 'code_mitra', 'code');
     }
 
+    public function jamaah()
+    {
+        return $this->hasOne(Jamaah::class, 'code_customer', 'code')
+            ->where('status', 'active');
+    }
+
+
+    // Method untuk mendapatkan code jamaah
+    public function getJamaahCodeAttribute()
+    {
+        // Cek jika customer status jamaah aktif dan ada relasi jamaah
+        if ($this->status_jamaah === 'active' && $this->jamaah) {
+            return $this->jamaah->code;
+        }
+        return null;
+    }
+
     // Relasi ke Cabang
     public function cabang()
     {
@@ -70,5 +87,17 @@ class Customer extends Model
     public function program()
     {
         return $this->belongsTo(Program::class, 'code_program', 'code');
+    }
+
+    // Relasi ke Payments
+    public function payments()
+    {
+        return $this->hasMany(Payments::class, 'code_customer', 'code');
+    }
+
+    // Relasi ke PaymentConfirms
+    public function paymentConfirms()
+    {
+        return $this->hasMany(PaymentConfirms::class, 'code_customer', 'code');
     }
 }

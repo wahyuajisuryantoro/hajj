@@ -426,7 +426,8 @@ class Member_CustomerController extends Controller
             'city:code,name',
             'province:code,name',
             'program:code,name',
-            'mitra:code,name'
+            'mitra:code,name',
+            'jamaah:code,status_payment,status_berangkat'
         ])
             ->where('code_mitra', $codeMitra)
             ->select([
@@ -459,6 +460,11 @@ class Member_CustomerController extends Controller
         }
 
         $transformedData = $customers->map(function ($item) {
+            $jamaahCode = null;
+            if ($item->status_jamaah === 'active' && $item->jamaah) {
+                $jamaahCode = $item->jamaah->code;
+            }
+
             return [
                 'id' => $item->id,
                 'code' => $item->code,
@@ -475,16 +481,120 @@ class Member_CustomerController extends Controller
                 'birth_place' => $item->birth_place,
                 'birth_date' => $item->birth_date,
                 'picture_ktp' => $item->picture_ktp,
+                'code_jamaah' => $jamaahCode,
                 'category' => $item->category ? ['code' => $item->category->code, 'name' => $item->category->name] : null,
                 'cabang' => $item->cabang ? ['code' => $item->cabang->code, 'name' => $item->cabang->name] : null,
                 'city' => $item->city ? ['code' => $item->city->code, 'name' => $item->city->name] : null,
                 'province' => $item->province ? ['code' => $item->province->code, 'name' => $item->province->name] : null,
                 'program' => $item->program ? ['code' => $item->program->code, 'name' => $item->program->name] : null,
                 'mitra' => $item->mitra ? ['code' => $item->mitra->code, 'name' => $item->mitra->name] : null,
+                'jamaah' => $item->jamaah ? [
+                    'code' => $item->jamaah->code,
+                    'status_payment' => $item->jamaah->status_payment,
+                    'status_berangkat' => $item->jamaah->status_berangkat
+                ] : null,
             ];
         });
 
         return response()->json(['status' => true, 'message' => 'Data customer berhasil diambil', 'data' => $transformedData], 200);
+    }
+    public function getDetailCustomer($id)
+    {
+        try {
+            $customer = Customer::with([
+                'category',
+                'cabang',
+                'city',
+                'province',
+                'program',
+                'mitra',
+                'payments',
+                'paymentConfirms',
+                'jamaah'
+            ])
+                ->findOrFail($id);
+
+            Log::info("Customer data:", [
+                'id' => $customer->id,
+                'code_program' => $customer->code_program,
+                'program' => $customer->program,
+                'status_jamaah' => $customer->status_jamaah,
+                'has_jamaah' => $customer->jamaah ? true : false
+            ]);
+
+            $jamaahCode = null;
+            if ($customer->status_jamaah === 'active' && $customer->jamaah) {
+                $jamaahCode = $customer->jamaah->code;
+                Log::info("Found jamaah code: $jamaahCode");
+            }
+
+            $transformedData = [
+                'id' => $customer->id,
+                'code' => $customer->code,
+                'username' => $customer->username,
+                'name' => $customer->name,
+                'phone' => $customer->phone,
+                'email' => $customer->email,
+                'status' => $customer->status,
+                'status_prospek' => $customer->status_prospek,
+                'status_jamaah' => $customer->status_jamaah,
+                'status_alumni' => $customer->status_alumni,
+                'address' => $customer->address,
+                'NIK' => $customer->NIK,
+                'birth_place' => $customer->birth_place,
+                'birth_date' => $customer->birth_date,
+                'picture_ktp' => $customer->picture_ktp,
+                'code_program' => $customer->code_program,
+                'code_jamaah' => $jamaahCode,
+                'category' => $customer->category ? ['code' => $customer->category->code, 'name' => $customer->category->name] : null,
+                'cabang' => $customer->cabang ? ['code' => $customer->cabang->code, 'name' => $customer->cabang->name] : null,
+                'city' => $customer->city ? ['code' => $customer->city->code, 'name' => $customer->city->name] : null,
+                'province' => $customer->province ? ['code' => $customer->province->code, 'name' => $customer->province->name] : null,
+                'program' => $customer->program ? ['code' => $customer->program->code, 'name' => $customer->program->name] : null,
+                'mitra' => $customer->mitra ? ['code' => $customer->mitra->code, 'name' => $customer->mitra->name] : null,
+                'jamaah' => $customer->jamaah ? [
+                    'code' => $customer->jamaah->code,
+                    'status_payment' => $customer->jamaah->status_payment,
+                    'status_berangkat' => $customer->jamaah->status_berangkat,
+                    'tahun_jamaah' => $customer->jamaah->tahun_jamaah,
+                ] : null,
+                'payments' => $customer->payments->map(function ($payment) {
+                    return [
+                        'id' => $payment->id,
+                        'code' => $payment->code,
+                        'value' => $payment->value,
+                        'status_payment' => $payment->status_payment,
+                        'tanggal_transaksi' => $payment->tanggal_transaksi,
+                        'code_transaksi' => $payment->code_transaksi
+                    ];
+                }),
+                'payment_confirms' => $customer->paymentConfirms->map(function ($confirm) {
+                    return [
+                        'id' => $confirm->id,
+                        'code' => $confirm->code,
+                        'value' => $confirm->value,
+                        'status_payment' => $confirm->status_payment,
+                        'tanggal_transaksi' => $confirm->tanggal_transaksi,
+                        'code_transaksi' => $confirm->code_transaksi,
+                        'picture_scan' => $confirm->picture_scan
+                    ];
+                })
+            ];
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Detail customer berhasil diambil',
+                'data' => $transformedData
+            ], 200);
+        } catch (\Exception $e) {
+            \Log::error("Error in getDetailCustomer for ID $id: " . $e->getMessage());
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Data customer tidak ditemukan: ' . $e->getMessage(),
+                'data' => null
+            ], 404);
+        }
     }
 
     public function getRelationalData()
@@ -518,12 +628,6 @@ class Member_CustomerController extends Controller
     {
         $messages = [
             'code_mitra.required' => 'Code mitra tidak ditemukan',
-            'username.required' => 'Username wajib diisi',
-            'username.unique' => 'Username sudah digunakan',
-            'email.email' => 'Format email tidak valid',
-            'email.unique' => 'Email sudah digunakan',
-            'password.required' => 'Password wajib diisi',
-            'password.min' => 'Password minimal 6 karakter',
             'name.required' => 'Nama wajib diisi',
             'phone.required' => 'Nomor telepon wajib diisi',
             'picture_ktp.image' => 'File foto KTP harus berupa gambar',
@@ -533,9 +637,6 @@ class Member_CustomerController extends Controller
 
         $validator = Validator::make($request->all(), [
             'code_mitra' => 'required',
-            'username' => 'required|unique:customers,username',
-            'email' => 'nullable|email|unique:customers,email',
-            'password' => 'required|min:6',
             'name' => 'required',
             'phone' => 'required',
             'picture_ktp' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
@@ -566,17 +667,18 @@ class Member_CustomerController extends Controller
 
             $picture_ktp = $request->hasFile('picture_ktp') ?
                 UploadFile::file($request->file('picture_ktp'), 'customer/ktp') : null;
+            $uniqueUsername = 'user_' . time() . '_' . Str::random(8);
 
             $customer = Customer::create([
                 'code' => $newCode,
-                'username' => $request->username,
-                'password' => Hash::make($request->password),
+                'username' => $uniqueUsername,
+                'password' => Hash::make('password123'),
                 'name' => $request->name,
                 'phone' => $request->phone,
                 'job' => $request->job,
-                'email' => $request->email,
-                'code_category' => $request->code_category,
-                'code_cabang' => $request->code_cabang,
+                'email' => null,
+                'code_category' => null,
+                'code_cabang' => null,
                 'code_mitra' => $request->code_mitra,
                 'code_city' => $request->code_city,
                 'code_province' => $request->code_province,
@@ -611,7 +713,117 @@ class Member_CustomerController extends Controller
 
             return response()->json([
                 'status' => 'error',
-                'message' => 'Terjadi kesalahan pada sistem'
+                'message' => 'Terjadi kesalahan pada sistem: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function updateCustomerApi(Request $request, $id)
+    {
+        try {
+            $customer = Customer::findOrFail($id);
+
+            $messages = [
+                'name.required' => 'Nama wajib diisi',
+                'phone.required' => 'Nomor telepon wajib diisi',
+                'picture_ktp.image' => 'File foto KTP harus berupa gambar',
+                'picture_ktp.mimes' => 'Format foto KTP harus jpeg, png, atau jpg',
+                'picture_ktp.max' => 'Ukuran foto KTP maksimal 2MB',
+            ];
+
+            $validator = Validator::make($request->all(), [
+                'name' => 'required',
+                'phone' => 'required',
+                'NIK' => 'nullable|unique:customers,NIK,' . $customer->id,
+                'sex' => 'nullable|in:L,P',
+                'code_province' => 'nullable|exists:provinces,code',
+                'code_city' => 'nullable|exists:cities,code',
+                'code_program' => 'nullable|exists:programs,code',
+                'birth_date' => 'nullable|date',
+                'picture_ktp' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+            ], $messages);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => $validator->errors()->first()
+                ], 400);
+            }
+
+            DB::beginTransaction();
+
+            $picture_ktp = $customer->picture_ktp;
+            if ($request->hasFile('picture_ktp')) {
+                if ($customer->picture_ktp) {
+                    UploadFile::delete('customer/ktp', $customer->picture_ktp);
+                }
+                $picture_ktp = UploadFile::file($request->file('picture_ktp'), 'customer/ktp');
+            }
+
+            $customer->update([
+                'name' => $request->name,
+                'phone' => $request->phone,
+                'job' => $request->job,
+                'code_city' => $request->code_city,
+                'code_province' => $request->code_province,
+                'note' => $request->note,
+                'address' => $request->address,
+                'code_program' => $request->code_program,
+                'NIK' => $request->NIK,
+                'birth_place' => $request->birth_place,
+                'birth_date' => $request->birth_date,
+                'sex' => $request->sex,
+                'picture_ktp' => $picture_ktp,
+            ]);
+
+            DB::commit();
+            $updatedCustomer = Customer::with([
+                'category:code,name',
+                'cabang:code,name',
+                'city:code,name',
+                'province:code,name',
+                'program:code,name',
+                'mitra:code,name'
+            ])->findOrFail($id);
+
+            $transformedData = [
+                'id' => $updatedCustomer->id,
+                'code' => $updatedCustomer->code,
+                'username' => $updatedCustomer->username,
+                'name' => $updatedCustomer->name,
+                'phone' => $updatedCustomer->phone,
+                'email' => $updatedCustomer->email,
+                'status' => $updatedCustomer->status,
+                'status_prospek' => $updatedCustomer->status_prospek,
+                'status_jamaah' => $updatedCustomer->status_jamaah,
+                'status_alumni' => $updatedCustomer->status_alumni,
+                'address' => $updatedCustomer->address,
+                'NIK' => $updatedCustomer->NIK,
+                'birth_place' => $updatedCustomer->birth_place,
+                'birth_date' => $updatedCustomer->birth_date,
+                'picture_ktp' => $updatedCustomer->picture_ktp,
+                'job' => $updatedCustomer->job,
+                'sex' => $updatedCustomer->sex,
+                'category' => $updatedCustomer->category ? ['code' => $updatedCustomer->category->code, 'name' => $updatedCustomer->category->name] : null,
+                'cabang' => $updatedCustomer->cabang ? ['code' => $updatedCustomer->cabang->code, 'name' => $updatedCustomer->cabang->name] : null,
+                'city' => $updatedCustomer->city ? ['code' => $updatedCustomer->city->code, 'name' => $updatedCustomer->city->name] : null,
+                'province' => $updatedCustomer->province ? ['code' => $updatedCustomer->province->code, 'name' => $updatedCustomer->province->name] : null,
+                'program' => $updatedCustomer->program ? ['code' => $updatedCustomer->program->code, 'name' => $updatedCustomer->program->name] : null,
+                'mitra' => $updatedCustomer->mitra ? ['code' => $updatedCustomer->mitra->code, 'name' => $updatedCustomer->mitra->name] : null,
+            ];
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Data Customer berhasil diupdate',
+                'data' => $transformedData
+            ], 200);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Customer Update API Error: ' . $e->getMessage());
+
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Terjadi kesalahan pada sistem: ' . $e->getMessage()
             ], 500);
         }
     }

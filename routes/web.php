@@ -1,17 +1,18 @@
 <?php
 
+use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\LandingController;
-use App\Http\Controllers\Member_AccountController;
+use App\Http\Controllers\PanduanController;
 use App\Http\Controllers\Member_AuthController;
 use App\Http\Controllers\Member_BonusController;
+use App\Http\Controllers\Member_MitraController;
+use App\Http\Controllers\Member_JamaahController;
+use App\Http\Controllers\Member_AccountController;
+use App\Http\Controllers\Member_ProgramController;
 use App\Http\Controllers\Member_CustomerController;
 use App\Http\Controllers\Member_DashboardController;
-use App\Http\Controllers\Member_JamaahController;
+use App\Http\Controllers\Member_PembayaranController;
 use App\Http\Controllers\Member_MarketingToolsController;
-use App\Http\Controllers\Member_MitraController;
-use App\Http\Controllers\Member_ProgramController;
-use App\Http\Controllers\PanduanController;
-use Illuminate\Support\Facades\Route;
 
 
 // Public routes
@@ -50,9 +51,15 @@ Route::prefix('api')->group(function () {
     Route::get('customer', [Member_CustomerController::class, 'getAllDataCustomer']);
     Route::get('customer/relation', [Member_CustomerController::class, 'getRelationalData']);
     Route::post('customer/store', [Member_CustomerController::class, 'storeCustomerApi']);
+    Route::put('/customer/update/{id}', [Member_CustomerController::class, 'updateCustomerApi']);
+    Route::get('customer/{id}', [Member_CustomerController::class, 'getDetailCustomer']);
 
     // Jamaah Routes
     Route::get('jamaah', [Member_JamaahController::class, 'getAllDataJamaah']);
+
+    Route::post('confirm', [Member_PembayaranController::class, 'storePaymentConfirm']);
+    Route::get('confirm/customer/{code}', [Member_PembayaranController::class, 'getPaymentConfirmsByCustomer']);
+    Route::get('confirm/{code}', [Member_PembayaranController::class, 'getPaymentConfirmDetail']);
 
     // Ujroh/Bonus Routes
     Route::get('ujroh', [Member_BonusController::class, 'getSaldoBonus']);
@@ -60,7 +67,7 @@ Route::prefix('api')->group(function () {
     // Account Routes
     Route::post('update-profile', [Member_AccountController::class, 'updateProfileApi']);
     Route::post('update-password', [Member_AccountController::class, 'updatePasswordApi']);
-    
+
 });
 // Protected routes
 Route::middleware(['mitra.auth'])->group(function () {
@@ -93,6 +100,7 @@ Route::middleware(['mitra.auth'])->group(function () {
         Route::put('/update/{id}', [Member_CustomerController::class, 'update'])->name('customer.update');
         Route::delete('/delete/{id}', [Member_CustomerController::class, 'destroy'])->name('customer.destroy');
         Route::get('/{code}/payments', [Member_CustomerController::class, 'getPayments'])->name('customer.payments');
+
     });
 
     // Jamaah routes
