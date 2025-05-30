@@ -17,7 +17,7 @@ class ProgramCategory extends Model
         'desc'
     ];
 
-    // Relationship with Program
+    
     public function programs()
     {
         return $this->hasMany(Program::class, 'code_category', 'code');

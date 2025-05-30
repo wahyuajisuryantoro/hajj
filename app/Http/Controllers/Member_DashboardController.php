@@ -21,32 +21,19 @@ class Member_DashboardController extends Controller
         $mitraCode = $loggedInMitra->code;
         $currentMonth = Carbon::now();
         $title = "Dashboard Member";
-        // Jumlah Mitra yang terkait dengan mitra yang sedang login (sesuai dengan kode mitra)
         $totalMitra = Mitra::where('code_mitra', $mitraCode)->count();
-
-        // Jumlah Customer yang terkait dengan mitra yang sedang login
         $totalCustomer = Customer::where('code_mitra', $mitraCode)->count();
-        // Jumlah Mitra 4 bulan lalu (sesuai dengan kode mitra)
         $mitraLast4Months = Mitra::where('code_mitra', $mitraCode)
             ->where('created_at', '>=', Carbon::now()->subMonths(4))
             ->count();
-
-        // Perubahan persentase Mitra
         $mitraPercentage = $mitraLast4Months > 0 ? round((($totalMitra - $mitraLast4Months) / $mitraLast4Months) * 100, 1) : 0;
-
-        // Jumlah Customer 4 bulan lalu (sesuai dengan kode mitra)
         $customerLast4Months = Customer::where('code_mitra', $mitraCode)
             ->where('created_at', '>=', Carbon::now()->subMonths(4))
             ->count();
-
-        // Perubahan persentase Customer
         $customerPercentage = $customerLast4Months > 0 ? round((($totalCustomer - $customerLast4Months) / $customerLast4Months) * 100, 1) : 0;
-        // Statistik Jamaah
         $totalJamaah = Jamaah::where('code_mitra', $mitraCode)
             ->where('status', 'active')
             ->count();
-
-        // Menghitung jumlah jamaah berdasarkan status keberangkatan
         $statusBelum = Jamaah::where('code_mitra', $mitraCode)
             ->where('status_berangkat', 'belum')
             ->count();
@@ -72,13 +59,10 @@ class Member_DashboardController extends Controller
         $jamaahPercentage = $jamaahPrevWeek > 0
             ? round((($jamaahLastWeek - $jamaahPrevWeek) / $jamaahPrevWeek) * 100, 1)
             : 0;
-        // Hitung total rekap bonus (debit)
         $totalBonus = Ujroh::getTotalBonus($mitraCode);
 
-        // Hitung total komisi yang ditransfer (credit)
         $totalTransfer = Ujroh::getTotalTransfer($mitraCode);
 
-        // Total Ujroh/Komisi
         $totalUjroh = Ujroh::where('code_mitra', $mitraCode)
             ->where('status', 'debit')
             ->sum('value');
@@ -99,7 +83,6 @@ class Member_DashboardController extends Controller
             ? round((($ujrohLastWeek - $ujrohPrevWeek) / $ujrohPrevWeek) * 100, 1)
             : 0;
 
-        // Status Pembayaran Overview
         $statusPembayaran = [
             'dp' => [
                 'count' => Jamaah::where('code_mitra', $mitraCode)
@@ -137,7 +120,6 @@ class Member_DashboardController extends Controller
                 : 0;
         }
 
-        // Program Overview - Upcoming Programs
         $upcomingPrograms = Program::with([
             'jamaahs' => function ($query) use ($mitraCode) {
                 $query->where('code_mitra', $mitraCode);
@@ -170,11 +152,10 @@ class Member_DashboardController extends Controller
             ->orderBy('month')
             ->get()
             ->map(function ($item) {
-                return (int)$item->total;
+                return (int) $item->total;
             })
             ->toArray();
 
-        // Isi dengan 0 untuk bulan yang tidak ada datanya
         $completeMonths = array_fill(0, 12, 0);
         foreach ($bonusChart as $index => $value) {
             $completeMonths[$index] = $value;
@@ -204,30 +185,41 @@ class Member_DashboardController extends Controller
     }
 
     // JSON API
-   public function getDashboardData(Request $request)
-{
-    $codeMitra = $request->header('code_mitra');
-    if (!$codeMitra) {
-        return response()->json(['status' => false, 'message' => 'Code mitra tidak ditemukan'], 400);
-    }
-    
-    $totalMitra = Mitra::where('code_mitra', $codeMitra)->count();
-    $totalJamaah = Jamaah::where('code_mitra', $codeMitra)->count();
-    $totalCustomer = Customer::where('code_mitra', $codeMitra)->count();
-    $totalBonus = Ujroh::byMitra($codeMitra)->debit()->sum('value');
-    $totalTransfer = Ujroh::byMitra($codeMitra)->credit()->sum('value');
-    $saldoBonus = $totalBonus - $totalTransfer;
+    public function getDashboardData(Request $request)
+    {
+        $codeMitra = $request->header('code_mitra');
+        if (!$codeMitra) {
+            return response()->json(['status' => false, 'message' => 'Code mitra tidak ditemukan'], 400);
+        }
 
-    return response()->json([
-        'status' => true,
-        'message' => 'Data dashboard berhasil diambil',
-        'data' => [
-            'total_mitra' => $totalMitra,
-            'total_jamaah' => $totalJamaah, 
-            'total_customer' => $totalCustomer,
-            'total_bonus' => $totalBonus,
-            'saldo_bonus' => $saldoBonus
-        ]
-    ]);
-}
+        $totalMitra = Mitra::where('code_mitra', $codeMitra)->count();
+        $totalJamaah = Jamaah::where('code_mitra', $codeMitra)->count();
+        $totalCustomer = Customer::where('code_mitra', $codeMitra)->count();
+
+        // Total Bonus (jumlah dari debit)
+        $totalBonus = Ujroh::where('code_mitra', $codeMitra)
+            ->where('status', 'debit')
+            ->sum('value');
+
+        // Bonus Diterima (jumlah dari kredit)
+        $bonusDiterima = Ujroh::where('code_mitra', $codeMitra)
+            ->where('status', 'credit')
+            ->sum('value');
+
+        // Saldo (Total Bonus - Bonus Diterima)
+        $saldoBonus = $totalBonus - $bonusDiterima;
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Data dashboard berhasil diambil',
+            'data' => [
+                'total_mitra' => $totalMitra,
+                'total_jamaah' => $totalJamaah,
+                'total_customer' => $totalCustomer,
+                'total_bonus' => $totalBonus,
+                'bonus_diterima' => $bonusDiterima,
+                'saldo_bonus' => $saldoBonus
+            ]
+        ]);
+    }
 }

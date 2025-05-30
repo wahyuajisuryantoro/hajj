@@ -2,17 +2,19 @@
 
 namespace App\Http\Controllers;
 
-use App\Helpers\UploadFile;
 use App\Models\Mitra;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Validator;
+use App\Models\Ujroh;
+use App\Models\Customer;
+use App\Helpers\UploadFile;
 use Illuminate\Support\Str;
-use RealRashid\SweetAlert\Facades\Alert;
+use Illuminate\Http\Request;
 use Yajra\DataTables\DataTables;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+use RealRashid\SweetAlert\Facades\Alert;
+use Illuminate\Support\Facades\Validator;
 
 class Member_MitraController extends Controller
 {
@@ -452,7 +454,291 @@ class Member_MitraController extends Controller
         }
     }
 
+    public function getDetailMitra($id)
+    {
+        try {
+            $mitra = Mitra::with([
+                'category:code,name',
+                'cabang:code,name',
+                'city:id,name',
+                'province:id,name',
+                'parent:id,code,name',
+                'children:id,code,name,level'
+            ])
+                ->findOrFail($id);
 
+            $transformedData = [
+                'id' => $mitra->id,
+                'code' => $mitra->code,
+                'username' => $mitra->username,
+                'referral_code' => $mitra->referral_code,
+                'name' => $mitra->name,
+                'phone' => $mitra->phone,
+                'email' => $mitra->email,
+                'level' => $mitra->level,
+                'status' => $mitra->status,
+                'address' => $mitra->address,
+                'NIK' => $mitra->NIK,
+                'sex' => $mitra->sex,
+                'birth_place' => $mitra->birth_place,
+                'birth_date' => $mitra->birth_date,
+                'picture_profile' => $mitra->picture_profile,
+                'picture_ktp' => $mitra->picture_ktp,
+                'bank' => $mitra->bank,
+                'bank_number' => $mitra->bank_number,
+                'bank_name' => $mitra->bank_name,
+                'code_mitra' => $mitra->code_mitra,
+                'category' => $mitra->category ? [
+                    'code' => $mitra->category->code,
+                    'name' => $mitra->category->name
+                ] : null,
+                'cabang' => $mitra->cabang ? [
+                    'code' => $mitra->cabang->code,
+                    'name' => $mitra->cabang->name
+                ] : null,
+                'city' => $mitra->city ? [
+                    'id' => $mitra->city->id,
+                    'name' => $mitra->city->name
+                ] : null,
+                'province' => $mitra->province ? [
+                    'id' => $mitra->province->id,
+                    'name' => $mitra->province->name
+                ] : null,
+                'parent_mitra' => $mitra->parent ? [
+                    'id' => $mitra->parent->id,
+                    'code' => $mitra->parent->code,
+                    'name' => $mitra->parent->name
+                ] : null,
+                'downlines' => $mitra->children->map(function ($child) {
+                    return [
+                        'id' => $child->id,
+                        'code' => $child->code,
+                        'name' => $child->name,
+                        'level' => $child->level
+                    ];
+                }),
+                'downline_count' => $mitra->children->count(),
+                'created_at' => $mitra->created_at,
+                'updated_at' => $mitra->updated_at
+            ];
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Detail mitra berhasil diambil',
+                'data' => $transformedData
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Data mitra tidak ditemukan: ' . $e->getMessage(),
+                'data' => null
+            ], 404);
+        }
+    }
+
+    public function getMitraCustomersWithBonus($mitraId)
+    {
+        try {
+            $codeMitra = request()->header('code_mitra');
+
+            if (!$codeMitra) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Code mitra tidak ditemukan di header'
+                ], 401);
+            }
+
+            $loggedInMitra = Mitra::where('code', $codeMitra)->first();
+
+            if (!$loggedInMitra) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Mitra dengan code tersebut tidak ditemukan'
+                ], 401);
+            }
+            $targetMitra = Mitra::findOrFail($mitraId);
+            $customers = Customer::with([
+                'category:code,name',
+                'cabang:code,name',
+                'city:id,name',
+                'province:id,name',
+                'program:code,name',
+                'jamaah'
+            ])
+                ->where('code_mitra', $targetMitra->code)
+                ->select([
+                    'id',
+                    'code',
+                    'name',
+                    'phone',
+                    'email',
+                    'status',
+                    'status_prospek',
+                    'status_jamaah',
+                    'status_alumni',
+                    'address',
+                    'code_category',
+                    'code_cabang',
+                    'code_city',
+                    'code_province',
+                    'code_program',
+                    'created_at'
+                ])
+                ->orderBy('name', 'asc')
+                ->get();
+
+            $customersWithBonus = $customers->map(function ($customer) {
+
+                $totalBonusDebit = Ujroh::where('code_customer', $customer->code)
+                    ->where('status', 'debit')
+                    ->sum('value') ?? 0;
+
+                $totalBonusCredit = Ujroh::where('code_customer', $customer->code)
+                    ->where('status', 'credit')
+                    ->sum('value') ?? 0;
+
+                $bonusBalance = $totalBonusDebit - $totalBonusCredit;
+
+                return [
+                    'id' => $customer->id,
+                    'code' => $customer->code,
+                    'name' => $customer->name,
+                    'phone' => $customer->phone,
+                    'email' => $customer->email,
+                    'status' => $customer->status,
+                    'status_prospek' => $customer->status_prospek,
+                    'status_jamaah' => $customer->status_jamaah,
+                    'status_alumni' => $customer->status_alumni,
+                    'address' => $customer->address,
+                    'created_at' => $customer->created_at,
+                    'category' => $customer->category ? [
+                        'code' => $customer->category->code,
+                        'name' => $customer->category->name
+                    ] : null,
+                    'cabang' => $customer->cabang ? [
+                        'code' => $customer->cabang->code,
+                        'name' => $customer->cabang->name
+                    ] : null,
+                    'city' => $customer->city ? [
+                        'id' => $customer->city->id,
+                        'name' => $customer->city->name
+                    ] : null,
+                    'province' => $customer->province ? [
+                        'id' => $customer->province->id,
+                        'name' => $customer->province->name
+                    ] : null,
+                    'program' => $customer->program ? [
+                        'code' => $customer->program->code,
+                        'name' => $customer->program->name
+                    ] : null,
+                    'jamaah' => $customer->jamaah ? [
+                        'code' => $customer->jamaah->code,
+                        'status_payment' => $customer->jamaah->status_payment ?? null,
+                        'status_berangkat' => $customer->jamaah->status_berangkat ?? null
+                    ] : null,
+                    'bonus_info' => [
+                        'total_debit' => $totalBonusDebit,
+                        'total_credit' => $totalBonusCredit,
+                        'balance' => $bonusBalance
+                    ]
+                ];
+            });
+
+            $totalCustomers = $customers->count();
+
+            if ($totalCustomers > 0) {
+                $customerCodes = $customers->pluck('code');
+                $totalBonusDebit = Ujroh::whereIn('code_customer', $customerCodes)
+                    ->where('status', 'debit')
+                    ->sum('value') ?? 0;
+                $totalBonusCredit = Ujroh::whereIn('code_customer', $customerCodes)
+                    ->where('status', 'credit')
+                    ->sum('value') ?? 0;
+                $totalBonusBalance = $totalBonusDebit - $totalBonusCredit;
+            } else {
+                $totalBonusDebit = 0;
+                $totalBonusCredit = 0;
+                $totalBonusBalance = 0;
+            }
+
+            $statistics = [
+                'total_customers' => $totalCustomers,
+                'customers_by_status' => [
+                    'prospek' => $customers->where('status', 'prospek')->count(),
+                    'jamaah' => $customers->where('status', 'jamaah')->count(),
+                    'alumni' => $customers->where('status', 'alumni')->count()
+                ],
+                'bonus_summary' => [
+                    'total_debit' => $totalBonusDebit,
+                    'total_credit' => $totalBonusCredit,
+                    'total_balance' => $totalBonusBalance,
+                    'average_bonus_per_customer' => $totalCustomers > 0 ?
+                        round($totalBonusBalance / $totalCustomers, 2) : 0
+                ]
+            ];
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Data customer dengan bonus berhasil diambil',
+                'data' => [
+                    'logged_in_mitra' => [
+                        'code' => $loggedInMitra->code,
+                        'name' => $loggedInMitra->name
+                    ],
+                    'mitra_info' => [
+                        'id' => $targetMitra->id,
+                        'code' => $targetMitra->code,
+                        'name' => $targetMitra->name,
+                        'level' => $targetMitra->level,
+                        'status' => $targetMitra->status
+                    ],
+                    'customers' => $customersWithBonus,
+                    'statistics' => $statistics
+                ]
+            ], 200);
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            Log::error('Mitra target not found: ' . $e->getMessage());
+            return response()->json([
+                'status' => false,
+                'message' => 'Mitra dengan ID tersebut tidak ditemukan'
+            ], 404);
+        } catch (\Exception $e) {
+            Log::error('Error fetching mitra customers with bonus: ' . $e->getMessage());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
+            return response()->json([
+                'status' => false,
+                'message' => 'Terjadi kesalahan pada sistem: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Helper method untuk mendapatkan semua downline mitra
+     */
+    private function getAllDownlines($mitraCode, $result = [])
+    {
+        try {
+            if (empty($mitraCode)) {
+                return $result;
+            }
+
+            $directDownlines = Mitra::where('code_mitra', $mitraCode)->pluck('code')->toArray();
+
+            foreach ($directDownlines as $downlineCode) {
+                if (!in_array($downlineCode, $result)) {
+                    $result[] = $downlineCode;
+                    $result = $this->getAllDownlines($downlineCode, $result);
+                }
+            }
+
+            return array_unique($result);
+        } catch (\Exception $e) {
+            Log::error('Error getting downlines for mitra code: ' . $mitraCode . ' - ' . $e->getMessage());
+            return $result;
+        }
+    }
 
     // private function buildMitraTree($mitra)
     // {

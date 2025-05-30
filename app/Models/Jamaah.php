@@ -65,12 +65,12 @@ class Jamaah extends Model
 
     public function city()
     {
-        return $this->belongsTo(City::class, 'code_city', 'code');
+        return $this->belongsTo(Regency::class, 'code_city', 'id');
     }
 
     public function province()
     {
-        return $this->belongsTo(Province::class, 'code_province', 'code');
+        return $this->belongsTo(Province::class, 'code_province', 'id'); 
     }
 
     public function cabang()

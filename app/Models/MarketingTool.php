@@ -25,25 +25,25 @@ class MarketingTool extends Model
         'updated_at' => 'datetime'
     ];
 
-    // Scope untuk mendapatkan e-flayer yang dipublish
+
     public function scopePublished($query)
     {
         return $query->where('publish', '1');
     }
 
-    // Scope untuk e-flayer
+
     public function scopeEflayer($query)
     {
         return $query->whereNotNull('picture');
     }
 
-    // Scope untuk video
+
     public function scopeVideo($query)
     {
         return $query->whereNotNull('file');
     }
 
-    // Formatter Kontent
+
     public function getFormattedContentAttribute()
     {
         $content = $this->content;
@@ -57,7 +57,7 @@ class MarketingTool extends Model
             'pembayaran' => []
         ];
 
-        // Ekstrak tanggal dan durasi
+
         if (preg_match('/Keberangkatan\s+(\d+\s+[A-Za-z]+\s+\d{4})/', $content, $matches)) {
             $data['tanggal'] = $matches[1];
         }
@@ -65,12 +65,12 @@ class MarketingTool extends Model
             $data['durasi'] = $matches[1];
         }
 
-        // Ekstrak pesawat
+
         if (preg_match('/Pesawat\s+([^H]+)Hotel/', $content, $matches)) {
             $data['pesawat'] = trim($matches[1]);
         }
 
-        // Ekstrak hotel-hotel
+
         preg_match_all('/Hotel\s+([^:]+):\s*([^\n]+)/', $content, $matches, PREG_SET_ORDER);
         foreach ($matches as $match) {
             $data['hotels'][] = [
@@ -79,21 +79,21 @@ class MarketingTool extends Model
             ];
         }
 
-        // Ekstrak fasilitas
+
         if (preg_match('/Fasilitas\s*:[^\n]*(.+?)Harga tidak termasuk/s', $content, $matches)) {
             $fasilitasText = $matches[1];
             $fasilitas = array_map('trim', explode('-', $fasilitasText));
             $data['fasilitas'] = array_filter($fasilitas);
         }
 
-        // Ekstrak non-fasilitas
+
         if (preg_match('/Harga tidak termasuk\s*:[^\n]*(.+?)Ketentuan/s', $content, $matches)) {
             $nonFasilitasText = $matches[1];
             $nonFasilitas = array_map('trim', explode('-', $nonFasilitasText));
             $data['non_fasilitas'] = array_filter($nonFasilitas);
         }
 
-        // Ekstrak ketentuan pembayaran
+
         if (preg_match('/Ketentuan Pembayaran\s*:(.+?)$/s', $content, $matches)) {
             $pembayaranText = $matches[1];
             $pembayaran = array_map('trim', explode("\n", $pembayaranText));

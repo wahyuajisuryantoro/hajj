@@ -2,23 +2,24 @@
 
 namespace App\Http\Controllers;
 
-use App\Helpers\UploadFile;
-use App\Models\Cabang;
 use App\Models\City;
-use App\Models\Customer;
-use App\Models\CustomerCategories;
-use App\Models\Payments;
+use App\Models\Cabang;
 use App\Models\Program;
+use App\Models\Regency;
+use App\Models\Customer;
+use App\Models\Payments;
 use App\Models\Province;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Validator;
+use App\Helpers\UploadFile;
 use Illuminate\Support\Str;
-use RealRashid\SweetAlert\Facades\Alert;
+use Illuminate\Http\Request;
 use Yajra\DataTables\DataTables;
+use App\Models\CustomerCategories;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+use RealRashid\SweetAlert\Facades\Alert;
+use Illuminate\Support\Facades\Validator;
 
 class Member_CustomerController extends Controller
 {
@@ -146,13 +147,9 @@ class Member_CustomerController extends Controller
     {
         try {
             DB::beginTransaction();
-
-            // Log start process
             Log::info('Memulai proses pembuatan customer baru', [
                 'request_data' => $request->all()
             ]);
-
-            // Generate new code
             $lastCode = DB::table('customers')
                 ->whereNotNull('code')
                 ->orderBy('code', 'desc')
@@ -423,8 +420,8 @@ class Member_CustomerController extends Controller
         $customers = Customer::with([
             'category:code,name',
             'cabang:code,name',
-            'city:code,name',
-            'province:code,name',
+            'city:id,name',
+            'province:id,name',
             'program:code,name',
             'mitra:code,name',
             'jamaah:code,status_payment,status_berangkat'
@@ -504,8 +501,8 @@ class Member_CustomerController extends Controller
             $customer = Customer::with([
                 'category',
                 'cabang',
-                'city',
-                'province',
+                'city', 
+                'province', 
                 'program',
                 'mitra',
                 'payments',
@@ -513,14 +510,6 @@ class Member_CustomerController extends Controller
                 'jamaah'
             ])
                 ->findOrFail($id);
-
-            Log::info("Customer data:", [
-                'id' => $customer->id,
-                'code_program' => $customer->code_program,
-                'program' => $customer->program,
-                'status_jamaah' => $customer->status_jamaah,
-                'has_jamaah' => $customer->jamaah ? true : false
-            ]);
 
             $jamaahCode = null;
             if ($customer->status_jamaah === 'active' && $customer->jamaah) {
@@ -548,8 +537,8 @@ class Member_CustomerController extends Controller
                 'code_jamaah' => $jamaahCode,
                 'category' => $customer->category ? ['code' => $customer->category->code, 'name' => $customer->category->name] : null,
                 'cabang' => $customer->cabang ? ['code' => $customer->cabang->code, 'name' => $customer->cabang->name] : null,
-                'city' => $customer->city ? ['code' => $customer->city->code, 'name' => $customer->city->name] : null,
-                'province' => $customer->province ? ['code' => $customer->province->code, 'name' => $customer->province->name] : null,
+                'city' => $customer->city ? ['id' => $customer->city->id, 'name' => $customer->city->name] : null,
+                'province' => $customer->province ? ['id' => $customer->province->id, 'name' => $customer->province->name] : null,
                 'program' => $customer->program ? ['code' => $customer->program->code, 'name' => $customer->program->name] : null,
                 'mitra' => $customer->mitra ? ['code' => $customer->mitra->code, 'name' => $customer->mitra->name] : null,
                 'jamaah' => $customer->jamaah ? [
@@ -587,8 +576,6 @@ class Member_CustomerController extends Controller
                 'data' => $transformedData
             ], 200);
         } catch (\Exception $e) {
-            \Log::error("Error in getDetailCustomer for ID $id: " . $e->getMessage());
-
             return response()->json([
                 'status' => false,
                 'message' => 'Data customer tidak ditemukan: ' . $e->getMessage(),
@@ -596,7 +583,6 @@ class Member_CustomerController extends Controller
             ], 404);
         }
     }
-
     public function getRelationalData()
     {
         try {
@@ -623,7 +609,6 @@ class Member_CustomerController extends Controller
         }
     }
 
-
     public function storeCustomerApi(Request $request)
     {
         $messages = [
@@ -633,12 +618,16 @@ class Member_CustomerController extends Controller
             'picture_ktp.image' => 'File foto KTP harus berupa gambar',
             'picture_ktp.mimes' => 'Format foto KTP harus jpeg, png, atau jpg',
             'picture_ktp.max' => 'Ukuran foto KTP maksimal 2MB',
+            'province_id.exists' => 'Provinsi tidak valid',
+            'regency_id.exists' => 'Kota/Kabupaten tidak valid',
         ];
 
         $validator = Validator::make($request->all(), [
             'code_mitra' => 'required',
             'name' => 'required',
             'phone' => 'required',
+            'province_id' => 'nullable|exists:provinces,id',
+            'regency_id' => 'nullable|exists:regencies,id',
             'picture_ktp' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
         ], $messages);
 
@@ -669,6 +658,17 @@ class Member_CustomerController extends Controller
                 UploadFile::file($request->file('picture_ktp'), 'customer/ktp') : null;
             $uniqueUsername = 'user_' . time() . '_' . Str::random(8);
 
+            $province = null;
+            $regency = null;
+
+            if ($request->province_id) {
+                $province = Province::find($request->province_id);
+            }
+
+            if ($request->regency_id) {
+                $regency = Regency::find($request->regency_id);
+            }
+
             $customer = Customer::create([
                 'code' => $newCode,
                 'username' => $uniqueUsername,
@@ -680,8 +680,8 @@ class Member_CustomerController extends Controller
                 'code_category' => null,
                 'code_cabang' => null,
                 'code_mitra' => $request->code_mitra,
-                'code_city' => $request->code_city,
-                'code_province' => $request->code_province,
+                'code_city' => $regency ? $regency->id : null,
+                'code_province' => $province ? $province->id : null,
                 'note' => $request->note,
                 'status' => 'prospek',
                 'status_prospek' => 'cold',
@@ -697,10 +697,24 @@ class Member_CustomerController extends Controller
 
             DB::commit();
 
+            $responseData = $customer->toArray();
+            if ($province) {
+                $responseData['province'] = [
+                    'id' => $province->id,
+                    'name' => $province->name
+                ];
+            }
+            if ($regency) {
+                $responseData['regency'] = [
+                    'id' => $regency->id,
+                    'name' => $regency->name
+                ];
+            }
+
             return response()->json([
                 'status' => 'success',
                 'message' => 'Data Customer berhasil ditambahkan',
-                'data' => $customer
+                'data' => $responseData
             ], 201);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -709,15 +723,12 @@ class Member_CustomerController extends Controller
                 UploadFile::delete('customer/ktp', $picture_ktp);
             }
 
-            Log::error('Customer Registration Error: ' . $e->getMessage());
-
             return response()->json([
                 'status' => 'error',
                 'message' => 'Terjadi kesalahan pada sistem: ' . $e->getMessage()
             ], 500);
         }
     }
-
     public function updateCustomerApi(Request $request, $id)
     {
         try {
@@ -736,8 +747,8 @@ class Member_CustomerController extends Controller
                 'phone' => 'required',
                 'NIK' => 'nullable|unique:customers,NIK,' . $customer->id,
                 'sex' => 'nullable|in:L,P',
-                'code_province' => 'nullable|exists:provinces,code',
-                'code_city' => 'nullable|exists:cities,code',
+                'province_id' => 'nullable|exists:provinces,id', 
+                'regency_id' => 'nullable|exists:regencies,id',   
                 'code_program' => 'nullable|exists:programs,code',
                 'birth_date' => 'nullable|date',
                 'picture_ktp' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
@@ -764,8 +775,8 @@ class Member_CustomerController extends Controller
                 'name' => $request->name,
                 'phone' => $request->phone,
                 'job' => $request->job,
-                'code_city' => $request->code_city,
-                'code_province' => $request->code_province,
+                'code_city' => $request->regency_id,  
+                'code_province' => $request->province_id,
                 'note' => $request->note,
                 'address' => $request->address,
                 'code_program' => $request->code_program,
@@ -777,11 +788,12 @@ class Member_CustomerController extends Controller
             ]);
 
             DB::commit();
+
             $updatedCustomer = Customer::with([
                 'category:code,name',
                 'cabang:code,name',
-                'city:code,name',
-                'province:code,name',
+                'city:id,name',  
+                'province:id,name',
                 'program:code,name',
                 'mitra:code,name'
             ])->findOrFail($id);
@@ -806,8 +818,8 @@ class Member_CustomerController extends Controller
                 'sex' => $updatedCustomer->sex,
                 'category' => $updatedCustomer->category ? ['code' => $updatedCustomer->category->code, 'name' => $updatedCustomer->category->name] : null,
                 'cabang' => $updatedCustomer->cabang ? ['code' => $updatedCustomer->cabang->code, 'name' => $updatedCustomer->cabang->name] : null,
-                'city' => $updatedCustomer->city ? ['code' => $updatedCustomer->city->code, 'name' => $updatedCustomer->city->name] : null,
-                'province' => $updatedCustomer->province ? ['code' => $updatedCustomer->province->code, 'name' => $updatedCustomer->province->name] : null,
+                'city' => $updatedCustomer->city ? ['id' => $updatedCustomer->city->id, 'name' => $updatedCustomer->city->name] : null,
+                'province' => $updatedCustomer->province ? ['id' => $updatedCustomer->province->id, 'name' => $updatedCustomer->province->name] : null,
                 'program' => $updatedCustomer->program ? ['code' => $updatedCustomer->program->code, 'name' => $updatedCustomer->program->name] : null,
                 'mitra' => $updatedCustomer->mitra ? ['code' => $updatedCustomer->mitra->code, 'name' => $updatedCustomer->mitra->name] : null,
             ];
@@ -819,8 +831,6 @@ class Member_CustomerController extends Controller
             ], 200);
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Customer Update API Error: ' . $e->getMessage());
-
             return response()->json([
                 'status' => 'error',
                 'message' => 'Terjadi kesalahan pada sistem: ' . $e->getMessage()

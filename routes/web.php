@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\RegionController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\LandingController;
 use App\Http\Controllers\PanduanController;
@@ -27,10 +28,13 @@ Route::get('/berita', [LandingController::class, 'allBerita'])->name('news.index
 Route::get('/panduan/hapus-akun', [PanduanController::class, 'hapusAkun'])->name('panduan.hapus-akun');
 Route::get('/panduan/kebijakan-privasi', [PanduanController::class, 'kebijakanPrivasi'])->name('panduan.kebijakan-privasi');
 
+
 // JSON API routes
 Route::prefix('api')->group(function () {
     // Dashboard Routes
     Route::get('dashboard', [Member_DashboardController::class, 'getDashboardData']);
+    Route::get('/provinsi', [RegionController::class, 'getProvinces']);
+    Route::get('/regency/{provinceId}', [RegionController::class, 'getRegenciesByProvince']);
     // Auth routes
     Route::post('/login', [Member_AuthController::class, 'loginApi']);
     Route::post('/register', [Member_AuthController::class, 'register']);
@@ -46,6 +50,8 @@ Route::prefix('api')->group(function () {
     // Mitra Routes
     Route::get('mitra', [Member_MitraController::class, 'getAllDataMitra']);
     Route::post('mitra/store', [Member_MitraController::class, 'storeMitraApi']);
+    Route::get('mitra/{id}', [Member_MitraController::class, 'getDetailMitra']);
+    Route::get('mitra/{id}/customers-with-bonus', [Member_MitraController::class, 'getMitraCustomersWithBonus']);
 
     // Customer Routes
     Route::get('customer', [Member_CustomerController::class, 'getAllDataCustomer']);
@@ -56,6 +62,7 @@ Route::prefix('api')->group(function () {
 
     // Jamaah Routes
     Route::get('jamaah', [Member_JamaahController::class, 'getAllDataJamaah']);
+    Route::get('jamaah/{id}', [Member_JamaahController::class, 'getDetailJamaah']);
 
     Route::post('confirm', [Member_PembayaranController::class, 'storePaymentConfirm']);
     Route::get('confirm/customer/{code}', [Member_PembayaranController::class, 'getPaymentConfirmsByCustomer']);

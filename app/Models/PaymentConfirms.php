@@ -24,13 +24,13 @@ class PaymentConfirms extends Model
         'code_transaksi'
     ];
 
-    // Relasi ke Customer
+    
     public function customer()
     {
         return $this->belongsTo(Customer::class, 'code_customer', 'code');
     }
 
-    // Relasi ke Program
+    
     public function program()
     {
         return $this->belongsTo(Program::class, 'code_program', 'code');

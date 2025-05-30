@@ -36,7 +36,6 @@ class Customer extends Model
         'picture_ktp',
     ];
 
-    // Relasi ke Mitra
     public function mitra()
     {
         return $this->belongsTo(Mitra::class, 'code_mitra', 'code');
@@ -48,54 +47,44 @@ class Customer extends Model
             ->where('status', 'active');
     }
 
-
-    // Method untuk mendapatkan code jamaah
     public function getJamaahCodeAttribute()
     {
-        // Cek jika customer status jamaah aktif dan ada relasi jamaah
         if ($this->status_jamaah === 'active' && $this->jamaah) {
             return $this->jamaah->code;
         }
         return null;
     }
 
-    // Relasi ke Cabang
     public function cabang()
     {
         return $this->belongsTo(Cabang::class, 'code_cabang', 'code');
     }
 
-    // Relasi ke City
     public function city()
     {
-        return $this->belongsTo(City::class, 'code_city', 'code');
+        return $this->belongsTo(Regency::class, 'code_city', 'id');
     }
 
-    // Relasi ke Province
     public function province()
     {
-        return $this->belongsTo(Province::class, 'code_province', 'code');
+        return $this->belongsTo(Province::class, 'code_province', 'id');
     }
 
-    // Relasi ke Category
     public function category()
     {
         return $this->belongsTo(CustomerCategories::class, 'code_category', 'code');
     }
 
-    // Relasi ke Program
     public function program()
     {
         return $this->belongsTo(Program::class, 'code_program', 'code');
     }
 
-    // Relasi ke Payments
     public function payments()
     {
         return $this->hasMany(Payments::class, 'code_customer', 'code');
     }
 
-    // Relasi ke PaymentConfirms
     public function paymentConfirms()
     {
         return $this->hasMany(PaymentConfirms::class, 'code_customer', 'code');

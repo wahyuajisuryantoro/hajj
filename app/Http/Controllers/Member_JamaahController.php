@@ -112,8 +112,8 @@ class Member_JamaahController extends Controller
         $codeMitra = $request->header('code_mitra');
 
         $jamaahs = Jamaah::with([
-            'city:code,name',
-            'province:code,name',
+            'city:id,name',
+            'province:id,name',
             'program:code,name',
             'cabang:code,name',
             'customer:code,name'
@@ -168,8 +168,8 @@ class Member_JamaahController extends Controller
                 'total_payment' => $item->total_payment,
                 'job' => $item->job,
                 'desc' => $item->desc,
-                'city' => $item->city ? ['code' => $item->city->code, 'name' => $item->city->name] : null,
-                'province' => $item->province ? ['code' => $item->province->code, 'name' => $item->province->name] : null,
+                'city' => $item->city ? ['id' => $item->city->id, 'name' => $item->city->name] : null,
+                'province' => $item->province ? ['id' => $item->province->id, 'name' => $item->province->name] : null,
                 'program' => $item->program ? ['code' => $item->program->code, 'name' => $item->program->name] : null,
                 'cabang' => $item->cabang ? ['code' => $item->cabang->code, 'name' => $item->cabang->name] : null,
                 'customer' => $item->customer ? ['code' => $item->customer->code, 'name' => $item->customer->name] : null,
@@ -181,5 +181,72 @@ class Member_JamaahController extends Controller
             'message' => 'Data jamaah berhasil diambil',
             'data' => $transformedData
         ], 200);
+    }
+
+    public function getDetailJamaah($id)
+    {
+        try {
+            $jamaah = Jamaah::with([
+                'city:id,name',
+                'province:id,name',
+                'program:id,code,name,price,duration,tanggal_berangkat,desc',
+                'cabang:code,name',
+                'customer:code,name',
+                'mitra:code,name'
+            ])
+                ->findOrFail($id);
+
+
+            $transformedData = [
+                'id' => $jamaah->id,
+                'code' => $jamaah->code,
+                'name' => $jamaah->name,
+                'phone' => $jamaah->phone,
+                'email' => $jamaah->email,
+                'job' => $jamaah->job,
+                'city_program' => $jamaah->city_program,
+                'desc' => $jamaah->desc,
+                'date_program' => $jamaah->date_program,
+                'formatted_date_program' => $jamaah->date_program ? $jamaah->date_program->format('d-m-Y') : '-',
+                'value' => $jamaah->value,
+                'total_payment' => $jamaah->total_payment,
+                'status' => $jamaah->status,
+                'status_payment' => $jamaah->status_payment,
+                'status_berangkat' => $jamaah->status_berangkat,
+                'picture_profile' => $jamaah->picture_profile,
+                'picture_ktp' => $jamaah->picture_ktp,
+                'tahun_jamaah' => $jamaah->tahun_jamaah,
+                'code_customer' => $jamaah->code_customer,
+                'code_program' => $jamaah->code_program,
+                'city' => $jamaah->city ? ['id' => $jamaah->city->id, 'name' => $jamaah->city->name] : null,
+                'province' => $jamaah->province ? ['id' => $jamaah->province->id, 'name' => $jamaah->province->name] : null,
+                'program' => $jamaah->program ? [
+                    'code' => $jamaah->program->code,
+                    'name' => $jamaah->program->name,
+                    'price' => $jamaah->program->price,
+                    'formatted_price' => $jamaah->program->price ? 'Rp ' . number_format($jamaah->program->price, 0, ',', '.') : '-',
+                    'duration' => $jamaah->program->duration,
+                    'tanggal_berangkat' => $jamaah->program->tanggal_berangkat,
+                    'formatted_tanggal_berangkat' => $jamaah->program->tanggal_berangkat ? $jamaah->program->tanggal_berangkat->format('d-m-Y') : '-',
+                    'desc' => $jamaah->program->desc
+                ] : null,
+                'cabang' => $jamaah->cabang ? ['code' => $jamaah->cabang->code, 'name' => $jamaah->cabang->name] : null,
+                'customer' => $jamaah->customer ? ['code' => $jamaah->customer->code, 'name' => $jamaah->customer->name] : null,
+                'mitra' => $jamaah->mitra ? ['code' => $jamaah->mitra->code, 'name' => $jamaah->mitra->name] : null,
+            ];
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Detail jamaah berhasil diambil',
+                'data' => $transformedData
+            ], 200);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Data jamaah tidak ditemukan: ' . $e->getMessage(),
+                'data' => null
+            ], 404);
+        }
     }
 }

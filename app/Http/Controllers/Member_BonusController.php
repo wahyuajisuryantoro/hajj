@@ -4,7 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\Ujroh;
 use Illuminate\Http\Request;
+use App\Models\UjrohCategory;
 use Yajra\DataTables\DataTables;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 
 class Member_BonusController extends Controller
@@ -67,42 +70,125 @@ class Member_BonusController extends Controller
     }
 
     // JSON API
-    public function getSaldoBonus(Request $request) {
+  public function getSaldoBonus(Request $request) {
         $codeMitra = $request->header('code_mitra');
         
-        $totalDebit = Ujroh::where('code_mitra', $codeMitra)
+        // 1. Total Bonus (jumlah dari debit)
+        $totalBonus = Ujroh::where('code_mitra', $codeMitra)
             ->where('status', 'debit')
             ->sum('value');
             
-        $totalCredit = Ujroh::where('code_mitra', $codeMitra)
+        // 2. Bonus Diterima (jumlah dari kredit)
+        $bonusDiterima = Ujroh::where('code_mitra', $codeMitra)
             ->where('status', 'credit')
             ->sum('value');
             
-        $saldoBonus = $totalDebit - $totalCredit;
-     
-        $mutasi = Ujroh::with('category')
-            ->where('code_mitra', $codeMitra)
-            ->select('code', 'code_category', 'value', 'status', 'desc', 'tanggal_transaksi')
-            ->orderBy('tanggal_transaksi', 'desc')
+        // 3. Saldo (Total Bonus - Bonus Diterima)
+        $saldo = $totalBonus - $bonusDiterima;
+        
+        // 4. TAMPILKAN SEMUA KATEGORI UJROH + JUMLAH YANG DIDAPAT USER
+        $allCategories = UjrohCategory::all();
+        
+        $bonusPerKategori = $allCategories->map(function($category) use ($codeMitra, $totalBonus) {
+            // Hitung berapa yang didapat user dari kategori ini
+            $totalValue = Ujroh::where('code_mitra', $codeMitra)
+                ->where('status', 'debit')
+                ->where('code_category', $category->code)
+                ->sum('value');
+            
+            $totalCount = Ujroh::where('code_mitra', $codeMitra)
+                ->where('status', 'debit')
+                ->where('code_category', $category->code)
+                ->count();
+            Log::info("Category {$category->code} ({$category->name}): Value={$totalValue}, Count={$totalCount}");
+            return [
+                'category_code' => $category->code,
+                'category_name' => $category->name,
+                'category_desc' => $category->desc,
+                'total_value' => (int) $totalValue,
+                'total_count' => (int) $totalCount,
+                'formatted_value' => 'Rp ' . number_format($totalValue, 0, ',', '.'),
+                'percentage' => $totalBonus > 0 ? round(($totalValue / $totalBonus) * 100, 1) : 0
+            ];
+        });
+        
+        // 5. Riwayat/mutasi dengan sumber customer dan valuenya
+        $mutasi = Ujroh::leftJoin('ujroh_categories', 'ujrohs.code_category', '=', 'ujroh_categories.code')
+            ->leftJoin('customers', 'ujrohs.code_customer', '=', 'customers.code')
+            ->where('ujrohs.code_mitra', $codeMitra)
+            ->select(
+                'ujrohs.code',
+                'ujrohs.code_category',
+                'ujrohs.code_customer',
+                'ujrohs.value',
+                'ujrohs.status',
+                'ujrohs.desc',
+                'ujrohs.tanggal_transaksi',
+                'ujrohs.sisa_saldo',
+                'ujrohs.created_at',
+                'ujroh_categories.name as category_name',
+                'ujroh_categories.desc as category_desc',
+                'customers.name as customer_name',
+                'customers.phone as customer_phone',
+                'customers.email as customer_email'
+            )
+            ->orderBy('ujrohs.tanggal_transaksi', 'desc')
+            ->orderBy('ujrohs.created_at', 'desc')
             ->get()
             ->map(function($item) {
                 return [
                     'code' => $item->code,
-                    'category_name' => $item->category->name ?? 'Unknown',
-                    'value' => $item->value,
+                    'category_code' => $item->code_category,
+                    'category_name' => $item->category_name ?? 'Kategori Tidak Diketahui',
+                    'category_desc' => $item->category_desc ?? '',
+                    'customer_code' => $item->code_customer,
+                    'customer_name' => $item->customer_name ?? 'Customer Tidak Diketahui',
+                    'customer_phone' => $item->customer_phone ?? '-',
+                    'customer_email' => $item->customer_email ?? '-',
+                    'value' => (int) $item->value,
+                    'formatted_value' => 'Rp ' . number_format($item->value, 0, ',', '.'),
                     'status' => $item->status,
-                    'desc' => $item->desc,
-                    'tanggal_transaksi' => $item->tanggal_transaksi
+                    'status_label' => $item->status === 'debit' ? 'Bonus Masuk' : 'Bonus Keluar',
+                    'desc' => $item->desc ?? 'Tidak ada deskripsi',
+                    'tanggal_transaksi' => $item->tanggal_transaksi,
+                    'formatted_date' => $item->tanggal_transaksi ? 
+                        \Carbon\Carbon::parse($item->tanggal_transaksi)->format('d/m/Y') : '-',
+                    'formatted_date_time' => $item->tanggal_transaksi ? 
+                        \Carbon\Carbon::parse($item->tanggal_transaksi)->format('d/m/Y H:i') : '-',
+                    'sisa_saldo' => (int) $item->sisa_saldo,
+                    'formatted_sisa_saldo' => 'Rp ' . number_format($item->sisa_saldo ?? 0, 0, ',', '.'),
+                    'created_at' => $item->created_at ? 
+                        \Carbon\Carbon::parse($item->created_at)->format('d/m/Y H:i:s') : '-'
                 ];
             });
         
+        // Summary data
+        $summary = [
+            'total_transaksi' => $mutasi->count(),
+            'total_debit' => $mutasi->where('status', 'debit')->count(),
+            'total_credit' => $mutasi->where('status', 'credit')->count(),
+            'total_kategori' => $allCategories->count(),
+            'kategori_aktif' => $bonusPerKategori->where('total_count', '>', 0)->count(),
+            'transaksi_terbaru' => $mutasi->first()
+        ];
+        
         return response()->json([
             'status' => true,
+            'message' => 'Data saldo bonus berhasil diambil',
             'data' => [
-                'total_bonus' => $totalDebit,
-                'saldo_bonus' => $saldoBonus,
-                'mutasi' => $mutasi
+                'total_bonus' => (int) $totalBonus,
+                'bonus_diterima' => (int) $bonusDiterima,
+                'saldo' => (int) $saldo,
+                'formatted_total_bonus' => 'Rp ' . number_format($totalBonus, 0, ',', '.'),
+                'formatted_bonus_diterima' => 'Rp ' . number_format($bonusDiterima, 0, ',', '.'),
+                'formatted_saldo' => 'Rp ' . number_format($saldo, 0, ',', '.'),
+                'bonus_per_kategori' => $bonusPerKategori,
+                'mutasi' => $mutasi,
+                'summary' => $summary
             ]
         ]);
-     }
+    }
+
+
+
 }

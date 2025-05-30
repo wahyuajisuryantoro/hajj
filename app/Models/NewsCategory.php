@@ -13,7 +13,7 @@ class NewsCategory extends Model
 
     protected $fillable = ['code', 'name'];
 
-     // Relasi ke News
+     
      public function news()
      {
          return $this->hasMany(News::class, 'code_category', 'code');

@@ -11,42 +11,25 @@ class Mitra extends Authenticatable
 {
     use Notifiable;
     protected $guard = 'mitra';
-    /**
-     * Nama tabel yang digunakan model ini
-     */
+
     protected $table = 'mitras';
 
-    /**
-     * Primary key tabel
-     */
     protected $primaryKey = 'id';
 
-    /**
-     * Tipe data primary key
-     */
     protected $keyType = 'int';
 
-    /**
-     * Increment ID secara otomatis
-     */
     public $incrementing = true;
 
-    /**
-     * Menggunakan timestamps (created_at & updated_at)
-     */
+
     public $timestamps = true;
 
-    /**
-     * Default values untuk kolom tertentu
-     */
+
     protected $attributes = [
         'level' => 'mitra',
         'status' => 'active'
     ];
 
-    /**
-     * Daftar kolom yang bisa diisi secara massal
-     */
+
     protected $fillable = [
         'code',
         'username',
@@ -74,42 +57,30 @@ class Mitra extends Authenticatable
         'status'
     ];
 
-    /**
-     * Kolom yang akan diubah tipe datanya
-     */
     protected $casts = [
         'birth_date' => 'date',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
 
-    /**
-     * Kolom yang harus dijaga agar tidak tampil dalam array/json
-     */
+
     protected $hidden = [
         'password'
     ];
 
-    /**
-     * Validasi enum untuk kolom level
-     */
+
     public static $levelOptions = [
         'mitra',
         'pembina',
         'pembimbing'
     ];
 
-    /**
-     * Validasi enum untuk kolom sex
-     */
+
     public static $sexOptions = [
         'L',
         'P'
     ];
 
-    /**
-     * Validasi enum untuk kolom status
-     */
     public static $statusOptions = [
         'active',
         'nonactive'
@@ -120,61 +91,46 @@ class Mitra extends Authenticatable
         return $this->belongsTo(Mitra::class, 'code_mitra');
     }
 
-    /**
-     * Relasi ke Mitra Children
-     */
+ 
     public function children()
     {
         return $this->hasMany(Mitra::class, 'code_mitra');
     }
-    /**
-     * Relasi ke Cabang
-     */
+ 
     public function cabang()
     {
         return $this->belongsTo(Cabang::class, 'code_cabang', 'code');
     }
 
-    /**
-     * Relasi ke Category
-     */
+
     public function category()
     {
         return $this->belongsTo(CustomerCategories::class, 'code_category', 'code');
     }
 
-    /**
-     * Relasi ke Program
-     */
+
     public function program()
     {
         return $this->belongsTo(Program::class, 'code_program', 'code');
     }
 
-    /**
-     * Relasi ke City
-     */
+
     public function city()
     {
-        return $this->belongsTo(City::class, 'code_city', 'code');
+        return $this->belongsTo(City::class, 'code_city', 'id');
     }
 
-    /**
-     * Relasi ke Province
-     */
+
     public function province()
     {
-        return $this->belongsTo(Province::class, 'code_province', 'code');
+        return $this->belongsTo(Province::class, 'code_province', 'id');
     }
 
-    /**
-     * Boot method untuk model
-     */
+
     protected static function boot()
     {
         parent::boot();
 
-        // Delete files when model is deleted
         static::deleting(function ($mitra) {
             if ($mitra->picture_profile) {
                 UploadFile::delete('mitra/profile', $mitra->picture_profile);
@@ -185,9 +141,7 @@ class Mitra extends Authenticatable
         });
     }
 
-    /**
-     * Helper method untuk update files
-     */
+
     public function updateFiles($request)
     {
         if ($request->hasFile('picture_profile')) {
@@ -207,33 +161,25 @@ class Mitra extends Authenticatable
         return $this->save();
     }
 
-    /**
-     * Scope query untuk mencari mitra aktif
-     */
+ 
     public function scopeActive($query)
     {
         return $query->where('status', 'active');
     }
 
-    /**
-     * Scope query untuk mencari berdasarkan level
-     */
+
     public function scopeByLevel($query, $level)
     {
         return $query->where('level', $level);
     }
 
-    /**
-     * Accessor untuk format nomor telepon
-     */
+
     public function getPhoneNumberAttribute()
     {
         return '+62' . ltrim($this->phone, '0');
     }
 
-    /**
-     * Accessor untuk nama lengkap dengan level
-     */
+  
     public function getFullTitleAttribute()
     {
         return $this->name . ' (' . ucfirst($this->level) . ')';

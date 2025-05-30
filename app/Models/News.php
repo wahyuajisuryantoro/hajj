@@ -20,13 +20,11 @@ class News extends Model
         return $this->belongsTo(NewsCategory::class, 'code_category', 'code');
     }
 
-    // Accessor untuk mendapatkan nama kategori
     public function getCategoryNameAttribute()
     {
         return $this->category ? $this->category->name : 'Tidak ada kategori';
     }
 
-    // Scope untuk berita yang dipublish
     public function scopePublished($query)
     {
         return $query->where('publish', 1);
