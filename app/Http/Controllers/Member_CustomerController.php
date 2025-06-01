@@ -501,8 +501,8 @@ class Member_CustomerController extends Controller
             $customer = Customer::with([
                 'category',
                 'cabang',
-                'city', 
-                'province', 
+                'city',
+                'province',
                 'program',
                 'mitra',
                 'payments',
@@ -615,6 +615,12 @@ class Member_CustomerController extends Controller
             'code_mitra.required' => 'Code mitra tidak ditemukan',
             'name.required' => 'Nama wajib diisi',
             'phone.required' => 'Nomor telepon wajib diisi',
+            'phone.regex' => 'Format nomor telepon tidak valid (gunakan format: 08xxxxxxxxx)',
+            'phone.unique' => 'Nomor telepon sudah terdaftar',
+            'NIK.regex' => 'NIK harus 16 digit angka',
+            'NIK.unique' => 'NIK sudah terdaftar',
+            'code_program.required' => 'Program wajib dipilih',
+            'code_program.exists' => 'Program tidak ditemukan',
             'picture_ktp.image' => 'File foto KTP harus berupa gambar',
             'picture_ktp.mimes' => 'Format foto KTP harus jpeg, png, atau jpg',
             'picture_ktp.max' => 'Ukuran foto KTP maksimal 2MB',
@@ -625,7 +631,13 @@ class Member_CustomerController extends Controller
         $validator = Validator::make($request->all(), [
             'code_mitra' => 'required',
             'name' => 'required',
-            'phone' => 'required',
+            'phone' => [
+                'required',
+                'regex:/^08[0-9]{8,11}$/',
+                'unique:customers,phone'
+            ],
+            'NIK' => 'nullable|regex:/^[0-9]{16}$/|unique:customers,NIK',
+            'code_program' => 'required|exists:programs,code',
             'province_id' => 'nullable|exists:provinces,id',
             'regency_id' => 'nullable|exists:regencies,id',
             'picture_ktp' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
@@ -676,6 +688,7 @@ class Member_CustomerController extends Controller
                 'name' => $request->name,
                 'phone' => $request->phone,
                 'job' => $request->job,
+                'sex' => $request->sex,
                 'email' => null,
                 'code_category' => null,
                 'code_cabang' => null,
@@ -694,6 +707,9 @@ class Member_CustomerController extends Controller
                 'birth_date' => $request->birth_date,
                 'picture_ktp' => $picture_ktp,
             ]);
+            if (!$this->updateProgramQuota($request->code_program, 'decrease')) {
+                throw new \Exception('Gagal mengurangi sisa kursi program');
+            }
 
             DB::commit();
 
@@ -729,6 +745,7 @@ class Member_CustomerController extends Controller
             ], 500);
         }
     }
+
     public function updateCustomerApi(Request $request, $id)
     {
         try {
@@ -737,6 +754,10 @@ class Member_CustomerController extends Controller
             $messages = [
                 'name.required' => 'Nama wajib diisi',
                 'phone.required' => 'Nomor telepon wajib diisi',
+                'phone.regex' => 'Format nomor telepon tidak valid (gunakan format: 08xxxxxxxxx)',
+                'phone.unique' => 'Nomor telepon sudah terdaftar',
+                'NIK.regex' => 'NIK harus 16 digit angka',
+                'NIK.unique' => 'NIK sudah terdaftar',
                 'picture_ktp.image' => 'File foto KTP harus berupa gambar',
                 'picture_ktp.mimes' => 'Format foto KTP harus jpeg, png, atau jpg',
                 'picture_ktp.max' => 'Ukuran foto KTP maksimal 2MB',
@@ -744,16 +765,38 @@ class Member_CustomerController extends Controller
 
             $validator = Validator::make($request->all(), [
                 'name' => 'required',
-                'phone' => 'required',
-                'NIK' => 'nullable|unique:customers,NIK,' . $customer->id,
+                'phone' => [
+                    'required',
+                    'regex:/^08[0-9]{8,11}$/',
+                    'unique:customers,phone,' . $customer->id
+                ],
+                'NIK' => 'nullable|regex:/^[0-9]{16}$/|unique:customers,NIK,' . $customer->id,
                 'sex' => 'nullable|in:L,P',
-                'province_id' => 'nullable|exists:provinces,id', 
-                'regency_id' => 'nullable|exists:regencies,id',   
+                'province_id' => 'nullable|exists:provinces,id',
+                'regency_id' => 'nullable|exists:regencies,id',
                 'code_program' => 'nullable|exists:programs,code',
                 'birth_date' => 'nullable|date',
                 'picture_ktp' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
-            ], $messages);
 
+            ], $messages);
+            $oldProgramCode = $customer->code_program;
+            $newProgramCode = $request->code_program;
+            if ($newProgramCode && $newProgramCode !== $oldProgramCode) {
+                $newProgram = Program::where('code', $newProgramCode)->first();
+                if (!$newProgram) {
+                    return response()->json([
+                        'status' => 'error',
+                        'message' => 'Program baru tidak ditemukan'
+                    ], 400);
+                }
+
+                if ($newProgram->sisa_kursi <= 0) {
+                    return response()->json([
+                        'status' => 'error',
+                        'message' => 'Maaf, kursi untuk program baru ini sudah penuh'
+                    ], 400);
+                }
+            }
             if ($validator->fails()) {
                 return response()->json([
                     'status' => 'error',
@@ -771,11 +814,12 @@ class Member_CustomerController extends Controller
                 $picture_ktp = UploadFile::file($request->file('picture_ktp'), 'customer/ktp');
             }
 
+
             $customer->update([
                 'name' => $request->name,
                 'phone' => $request->phone,
                 'job' => $request->job,
-                'code_city' => $request->regency_id,  
+                'code_city' => $request->regency_id,
                 'code_province' => $request->province_id,
                 'note' => $request->note,
                 'address' => $request->address,
@@ -786,13 +830,26 @@ class Member_CustomerController extends Controller
                 'sex' => $request->sex,
                 'picture_ktp' => $picture_ktp,
             ]);
+            if ($oldProgramCode !== $newProgramCode) {
+                // Jika program lama ada, tambahkan quota kembali
+                if ($oldProgramCode) {
+                    $this->updateProgramQuota($oldProgramCode, 'increase');
+                }
+
+                // Jika program baru ada, kurangi quota
+                if ($newProgramCode) {
+                    if (!$this->updateProgramQuota($newProgramCode, 'decrease')) {
+                        throw new \Exception('Gagal mengurangi sisa kursi program baru');
+                    }
+                }
+            }
 
             DB::commit();
 
             $updatedCustomer = Customer::with([
                 'category:code,name',
                 'cabang:code,name',
-                'city:id,name',  
+                'city:id,name',
                 'province:id,name',
                 'program:code,name',
                 'mitra:code,name'
@@ -835,6 +892,45 @@ class Member_CustomerController extends Controller
                 'status' => 'error',
                 'message' => 'Terjadi kesalahan pada sistem: ' . $e->getMessage()
             ], 500);
+        }
+    }
+
+    private function updateProgramQuota($programCode, $action = 'decrease')
+    {
+        try {
+            $program = Program::where('code', $programCode)->first();
+
+            if (!$program) {
+                Log::warning('Program not found for quota update', ['program_code' => $programCode]);
+                return false;
+            }
+
+            if ($action === 'decrease') {
+                if ($program->sisa_kursi > 0) {
+                    $program->decrement('sisa_kursi');
+                    Log::info('Program sisa_kursi decreased', [
+                        'program_code' => $programCode,
+                        'remaining_seats' => $program->fresh()->sisa_kursi
+                    ]);
+                } else {
+                    Log::warning('Cannot decrease sisa_kursi, already at 0', ['program_code' => $programCode]);
+                    return false;
+                }
+            } else if ($action === 'increase') {
+                $program->increment('sisa_kursi');
+                Log::info('Program sisa_kursi increased', [
+                    'program_code' => $programCode,
+                    'remaining_seats' => $program->fresh()->sisa_kursi
+                ]);
+            }
+
+            return true;
+        } catch (\Exception $e) {
+            Log::error('Failed to update program quota: ' . $e->getMessage(), [
+                'program_code' => $programCode,
+                'action' => $action
+            ]);
+            return false;
         }
     }
 }

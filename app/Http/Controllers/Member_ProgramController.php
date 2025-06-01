@@ -34,13 +34,10 @@ class Member_ProgramController extends Controller
         return view('pages.program.show', compact('title', 'program'));
     }
 
-     // Endpoint baru untuk JSON
      public function getPrograms(Request $request)
     {
     try {
         $query = Program::query();
-
-        // Filter agar tidak menampilkan program dengan status 'nonactive'
         $query->where('status', '!=', 'nonactive');
 
         if ($request->filled('category')) {

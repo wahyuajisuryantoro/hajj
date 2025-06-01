@@ -91,12 +91,12 @@ class Mitra extends Authenticatable
         return $this->belongsTo(Mitra::class, 'code_mitra');
     }
 
- 
+
     public function children()
     {
         return $this->hasMany(Mitra::class, 'code_mitra');
     }
- 
+
     public function cabang()
     {
         return $this->belongsTo(Cabang::class, 'code_cabang', 'code');
@@ -117,7 +117,8 @@ class Mitra extends Authenticatable
 
     public function city()
     {
-        return $this->belongsTo(City::class, 'code_city', 'id');
+
+        return $this->belongsTo(Regency::class, 'code_city', 'id');
     }
 
 
@@ -125,6 +126,7 @@ class Mitra extends Authenticatable
     {
         return $this->belongsTo(Province::class, 'code_province', 'id');
     }
+
 
 
     protected static function boot()
@@ -161,7 +163,7 @@ class Mitra extends Authenticatable
         return $this->save();
     }
 
- 
+
     public function scopeActive($query)
     {
         return $query->where('status', 'active');
@@ -179,13 +181,13 @@ class Mitra extends Authenticatable
         return '+62' . ltrim($this->phone, '0');
     }
 
-  
+
     public function getFullTitleAttribute()
     {
         return $this->name . ' (' . ucfirst($this->level) . ')';
     }
 
-      public function buildTree($mitraCode = null, $level = 0)
+    public function buildTree($mitraCode = null, $level = 0)
     {
         if (!$mitraCode) {
             $mitraCode = $this->code;
@@ -199,7 +201,7 @@ class Mitra extends Authenticatable
 
         $tree = [
             'id' => $mitra->id,
-            'text' => $level . '. ' . $mitra->name ,
+            'text' => $level . '. ' . $mitra->name,
             'icon' => $level === 0 ? 'ri-user-star-line text-warning' : 'ri-user-line',
             'state' => ['opened' => true],
             'children' => []

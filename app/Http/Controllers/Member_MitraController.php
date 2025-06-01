@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Mitra;
 use App\Models\Ujroh;
 use App\Models\Customer;
+use App\Models\Province;
+use App\Models\Regency;
 use App\Helpers\UploadFile;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
@@ -35,10 +37,8 @@ class Member_MitraController extends Controller
         return view('pages.mitra.detail-mitra', compact('title', 'mitra'));
     }
 
-
     public function store(Request $request)
     {
-
         $messages = [
             'username.required' => 'Username wajib diisi',
             'username.unique' => 'Username sudah digunakan',
@@ -56,8 +56,9 @@ class Member_MitraController extends Controller
             'picture_ktp.image' => 'File foto KTP harus berupa gambar',
             'picture_ktp.mimes' => 'Format foto KTP harus jpeg, png, atau jpg',
             'picture_ktp.max' => 'Ukuran foto KTP maksimal 2MB',
+            'province_id.exists' => 'Provinsi tidak valid',
+            'regency_id.exists' => 'Kota/Kabupaten tidak valid',
         ];
-
 
         $validator = Validator::make($request->all(), [
             'username' => 'required|unique:mitras,username',
@@ -66,6 +67,8 @@ class Member_MitraController extends Controller
             'name' => 'required',
             'sex' => 'required|in:L,P',
             'phone' => 'required',
+            'province_id' => 'nullable|exists:provinces,id',
+            'regency_id' => 'nullable|exists:regencies,id',
             'picture_profile' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
             'picture_ktp' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
         ], $messages);
@@ -76,17 +79,14 @@ class Member_MitraController extends Controller
         }
 
         try {
-
             $lastCode = DB::table('mitras')
                 ->whereNotNull('code')
                 ->orderBy('code', 'desc')
                 ->lockForUpdate()
                 ->value('code');
 
-
             $newCodeNumber = ($lastCode ? intval($lastCode) + 1 : 1);
             $newCode = str_pad($newCodeNumber, 10, '0', STR_PAD_LEFT);
-
 
             while (DB::table('mitras')->where('code', $newCode)->exists()) {
                 $newCodeNumber++;
@@ -107,7 +107,6 @@ class Member_MitraController extends Controller
             $loggedInMitra = Auth::guard('mitra')->user();
             $codeMitra = $loggedInMitra->code ?? null;
 
-
             Mitra::create([
                 'code' => $newCode,
                 'username' => $request->username,
@@ -121,8 +120,8 @@ class Member_MitraController extends Controller
                 'birth_place' => $request->birth_place,
                 'birth_date' => $request->birth_date,
                 'address' => $request->address,
-                'code_city' => $request->code_city,
-                'code_province' => $request->code_province,
+                'code_city' => $request->regency_id,
+                'code_province' => $request->province_id,
                 'phone' => $request->phone,
                 'email' => $request->email,
                 'bank' => $request->bank,
@@ -152,10 +151,10 @@ class Member_MitraController extends Controller
             return back()->withInput();
         }
     }
+
     public function list(Request $request)
     {
         if ($request->ajax()) {
-
             $loggedInMitra = Auth::guard('mitra')->user();
             $loggedInCode = $loggedInMitra->code ?? null;
             $filterLevel = $request->get('level');
@@ -249,11 +248,9 @@ class Member_MitraController extends Controller
         return view('pages.mitra.list', compact('title'));
     }
 
-
     public function getParentMitra(Request $request)
     {
         $search = $request->search;
-
 
         $mitras = Mitra::where('name', 'like', "%$search%")
             ->orWhere('code', 'like', "%$search%")
@@ -278,7 +275,7 @@ class Member_MitraController extends Controller
         return view('pages.mitra.genealogy', compact('tree', 'title'));
     }
 
-    // API JSON
+
 
     public function getAllDataMitra(Request $request)
     {
@@ -287,8 +284,8 @@ class Member_MitraController extends Controller
         $mitra = Mitra::with([
             'category:code,name',
             'cabang:code,name',
-            'city:code,name',
-            'province:code,name',
+            'city:id,name',
+            'province:id,name',
             'children' => function ($query) {
                 $query->select('id', 'code', 'code_mitra', 'name', 'level');
             }
@@ -329,8 +326,8 @@ class Member_MitraController extends Controller
                 'status' => $item->status,
                 'category' => $item->category ? ['code' => $item->category->code, 'name' => $item->category->name] : null,
                 'cabang' => $item->cabang ? ['code' => $item->cabang->code, 'name' => $item->cabang->name] : null,
-                'city' => $item->city ? ['code' => $item->city->code, 'name' => $item->city->name] : null,
-                'province' => $item->province ? ['code' => $item->province->code, 'name' => $item->province->name] : null,
+                'city' => $item->city ? ['id' => $item->city->id, 'name' => $item->city->name] : null,
+                'province' => $item->province ? ['id' => $item->province->id, 'name' => $item->province->name] : null,
                 'downline_count' => $item->children->count(),
             ];
         });
@@ -357,6 +354,8 @@ class Member_MitraController extends Controller
             'picture_ktp.image' => 'File foto KTP harus berupa gambar',
             'picture_ktp.mimes' => 'Format foto KTP harus jpeg, png, atau jpg',
             'picture_ktp.max' => 'Ukuran foto KTP maksimal 2MB',
+            'province_id.exists' => 'Provinsi tidak valid',
+            'regency_id.exists' => 'Kota/Kabupaten tidak valid',
         ];
 
         $validator = Validator::make($request->all(), [
@@ -367,6 +366,8 @@ class Member_MitraController extends Controller
             'name' => 'required',
             'sex' => 'required|in:L,P',
             'phone' => 'required',
+            'province_id' => 'nullable|exists:provinces,id',
+            'regency_id' => 'nullable|exists:regencies,id',
             'picture_profile' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
             'picture_ktp' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
         ], $messages);
@@ -380,7 +381,7 @@ class Member_MitraController extends Controller
 
         DB::beginTransaction();
         try {
-            // Generate code
+
             $lastCode = DB::table('mitras')
                 ->whereNotNull('code')
                 ->orderBy('code', 'desc')
@@ -395,14 +396,26 @@ class Member_MitraController extends Controller
                 $newCode = str_pad($newCodeNumber, 10, '0', STR_PAD_LEFT);
             }
 
-            // Handle file uploads
+
             $picture_profile = $request->hasFile('picture_profile') ?
                 UploadFile::file($request->file('picture_profile'), 'mitra/profile') : null;
 
             $picture_ktp = $request->hasFile('picture_ktp') ?
                 UploadFile::file($request->file('picture_ktp'), 'mitra/ktp') : null;
 
-            // Create mitra
+
+            $province = null;
+            $regency = null;
+
+            if ($request->province_id) {
+                $province = Province::find($request->province_id);
+            }
+
+            if ($request->regency_id) {
+                $regency = Regency::find($request->regency_id);
+            }
+
+
             $mitra = Mitra::create([
                 'code' => $newCode,
                 'username' => $request->username,
@@ -416,8 +429,8 @@ class Member_MitraController extends Controller
                 'birth_place' => $request->birth_place,
                 'birth_date' => $request->birth_date,
                 'address' => $request->address,
-                'code_city' => $request->code_city,
-                'code_province' => $request->code_province,
+                'code_city' => $request->regency_id,
+                'code_province' => $request->province_id,
                 'phone' => $request->phone,
                 'email' => $request->email,
                 'bank' => $request->bank,
@@ -430,10 +443,25 @@ class Member_MitraController extends Controller
 
             DB::commit();
 
+
+            $responseData = $mitra->toArray();
+            if ($province) {
+                $responseData['province'] = [
+                    'id' => $province->id,
+                    'name' => $province->name
+                ];
+            }
+            if ($regency) {
+                $responseData['regency'] = [
+                    'id' => $regency->id,
+                    'name' => $regency->name
+                ];
+            }
+
             return response()->json([
                 'status' => 'success',
                 'message' => 'Data Mitra berhasil ditambahkan',
-                'data' => $mitra
+                'data' => $responseData
             ], 201);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -449,7 +477,7 @@ class Member_MitraController extends Controller
 
             return response()->json([
                 'status' => 'error',
-                'message' => 'Terjadi kesalahan pada sistem'
+                'message' => 'Terjadi kesalahan pada sistem: ' . $e->getMessage()
             ], 500);
         }
     }
@@ -460,13 +488,21 @@ class Member_MitraController extends Controller
             $mitra = Mitra::with([
                 'category:code,name',
                 'cabang:code,name',
-                'city:id,name',
-                'province:id,name',
+                'city',
+                'province',
                 'parent:id,code,name',
                 'children:id,code,name,level'
             ])
                 ->findOrFail($id);
-
+            Log::info('Mitra Debug Info:', [
+                'mitra_id' => $mitra->id,
+                'code_city' => $mitra->code_city,
+                'code_province' => $mitra->code_province,
+                'city_loaded' => $mitra->city ? true : false,
+                'province_loaded' => $mitra->province ? true : false,
+                'city_data' => $mitra->city,
+                'province_data' => $mitra->province,
+            ]);
             $transformedData = [
                 'id' => $mitra->id,
                 'code' => $mitra->code,
@@ -484,10 +520,10 @@ class Member_MitraController extends Controller
                 'birth_date' => $mitra->birth_date,
                 'picture_profile' => $mitra->picture_profile,
                 'picture_ktp' => $mitra->picture_ktp,
+                'code_mitra' => $mitra->code_mitra,
                 'bank' => $mitra->bank,
                 'bank_number' => $mitra->bank_number,
                 'bank_name' => $mitra->bank_name,
-                'code_mitra' => $mitra->code_mitra,
                 'category' => $mitra->category ? [
                     'code' => $mitra->category->code,
                     'name' => $mitra->category->name
@@ -534,6 +570,139 @@ class Member_MitraController extends Controller
                 'message' => 'Data mitra tidak ditemukan: ' . $e->getMessage(),
                 'data' => null
             ], 404);
+        }
+    }
+
+
+    public function updateMitraApi(Request $request, $id)
+    {
+        try {
+            $mitra = Mitra::findOrFail($id);
+
+            $messages = [
+                'username.unique' => 'Username sudah digunakan',
+                'email.email' => 'Format email tidak valid',
+                'email.unique' => 'Email sudah digunakan',
+                'name.required' => 'Nama wajib diisi',
+                'sex.required' => 'Jenis kelamin wajib dipilih',
+                'phone.required' => 'Nomor telepon wajib diisi',
+                'picture_profile.image' => 'File foto profile harus berupa gambar',
+                'picture_profile.mimes' => 'Format foto profile harus jpeg, png, atau jpg',
+                'picture_profile.max' => 'Ukuran foto profile maksimal 2MB',
+                'picture_ktp.image' => 'File foto KTP harus berupa gambar',
+                'picture_ktp.mimes' => 'Format foto KTP harus jpeg, png, atau jpg',
+                'picture_ktp.max' => 'Ukuran foto KTP maksimal 2MB',
+                'province_id.exists' => 'Provinsi tidak valid',
+                'regency_id.exists' => 'Kota/Kabupaten tidak valid',
+            ];
+
+            $validator = Validator::make($request->all(), [
+                'username' => 'nullable|unique:mitras,username,' . $mitra->id,
+                'email' => 'nullable|email|unique:mitras,email,' . $mitra->id,
+                'name' => 'required',
+                'sex' => 'nullable|in:L,P',
+                'phone' => 'required',
+                'province_id' => 'nullable|exists:provinces,id',
+                'regency_id' => 'nullable|exists:regencies,id',
+                'picture_profile' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+                'picture_ktp' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+            ], $messages);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => $validator->errors()->first()
+                ], 400);
+            }
+
+            DB::beginTransaction();
+
+
+            $picture_profile = $mitra->picture_profile;
+            if ($request->hasFile('picture_profile')) {
+                if ($mitra->picture_profile) {
+                    UploadFile::delete('mitra/profile', $mitra->picture_profile);
+                }
+                $picture_profile = UploadFile::file($request->file('picture_profile'), 'mitra/profile');
+            }
+
+            $picture_ktp = $mitra->picture_ktp;
+            if ($request->hasFile('picture_ktp')) {
+                if ($mitra->picture_ktp) {
+                    UploadFile::delete('mitra/ktp', $mitra->picture_ktp);
+                }
+                $picture_ktp = UploadFile::file($request->file('picture_ktp'), 'mitra/ktp');
+            }
+
+
+            $mitra->update([
+                'username' => $request->username ?? $mitra->username,
+                'name' => $request->name,
+                'phone' => $request->phone,
+                'email' => $request->email,
+                'NIK' => $request->NIK,
+                'sex' => $request->sex,
+                'birth_place' => $request->birth_place,
+                'birth_date' => $request->birth_date,
+                'address' => $request->address,
+                'code_city' => $request->regency_id,
+                'code_province' => $request->province_id,
+                'bank' => $request->bank,
+                'bank_number' => $request->bank_number,
+                'bank_name' => $request->bank_name,
+                'picture_profile' => $picture_profile,
+                'picture_ktp' => $picture_ktp,
+            ]);
+
+            DB::commit();
+
+
+            $updatedMitra = Mitra::with([
+                'category:code,name',
+                'cabang:code,name',
+                'city:id,name',
+                'province:id,name'
+            ])->findOrFail($id);
+
+            $transformedData = [
+                'id' => $updatedMitra->id,
+                'code' => $updatedMitra->code,
+                'username' => $updatedMitra->username,
+                'name' => $updatedMitra->name,
+                'phone' => $updatedMitra->phone,
+                'email' => $updatedMitra->email,
+                'level' => $updatedMitra->level,
+                'status' => $updatedMitra->status,
+                'address' => $updatedMitra->address,
+                'NIK' => $updatedMitra->NIK,
+                'sex' => $updatedMitra->sex,
+                'birth_place' => $updatedMitra->birth_place,
+                'birth_date' => $updatedMitra->birth_date,
+                'picture_profile' => $updatedMitra->picture_profile,
+                'picture_ktp' => $updatedMitra->picture_ktp,
+                'bank' => $updatedMitra->bank,
+                'bank_number' => $updatedMitra->bank_number,
+                'bank_name' => $updatedMitra->bank_name,
+                'category' => $updatedMitra->category ? ['code' => $updatedMitra->category->code, 'name' => $updatedMitra->category->name] : null,
+                'cabang' => $updatedMitra->cabang ? ['code' => $updatedMitra->cabang->code, 'name' => $updatedMitra->cabang->name] : null,
+                'city' => $updatedMitra->city ? ['id' => $updatedMitra->city->id, 'name' => $updatedMitra->city->name] : null,
+                'province' => $updatedMitra->province ? ['id' => $updatedMitra->province->id, 'name' => $updatedMitra->province->name] : null,
+            ];
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Data Mitra berhasil diupdate',
+                'data' => $transformedData
+            ], 200);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Mitra Update Error: ' . $e->getMessage());
+
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Terjadi kesalahan pada sistem: ' . $e->getMessage()
+            ], 500);
         }
     }
 
@@ -713,10 +882,6 @@ class Member_MitraController extends Controller
             ], 500);
         }
     }
-
-    /**
-     * Helper method untuk mendapatkan semua downline mitra
-     */
     private function getAllDownlines($mitraCode, $result = [])
     {
         try {
@@ -739,22 +904,4 @@ class Member_MitraController extends Controller
             return $result;
         }
     }
-
-    // private function buildMitraTree($mitra)
-    // {
-    //     $tree = [
-    //         'id' => $mitra->id,
-    //         'name' => $mitra->name,
-    //         'email' => $mitra->email,
-    //         'picture_profile' => $mitra->picture_profile,
-    //         'children' => []
-    //     ];
-
-    //     $children = Mitra::where('code_mitra', $mitra->code)->get();
-    //     foreach ($children as $child) {
-    //         $tree['children'][] = $this->buildMitraTree($child);
-    //     }
-
-    //     return $tree;
-    // }
 }

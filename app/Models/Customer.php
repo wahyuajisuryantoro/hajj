@@ -2,8 +2,9 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Customer extends Model
 {
@@ -88,5 +89,47 @@ class Customer extends Model
     public function paymentConfirms()
     {
         return $this->hasMany(PaymentConfirms::class, 'code_customer', 'code');
+    }
+
+     public function updateProgramQuota($programCode, $action = 'decrease')
+    {
+        try {
+            $program = Program::where('code', $programCode)->first();
+            
+            if (!$program) {
+                Log::warning('Program not found for quota update', ['program_code' => $programCode]);
+                return;
+            }
+
+            if ($action === 'decrease') {
+                if ($program->kuota !== null && $program->kuota > 0) {
+                    $program->decrement('kuota');
+                }
+                if ($program->sisa_kursi !== null && $program->sisa_kursi > 0) {
+                    $program->decrement('sisa_kursi');
+                }
+            } else if ($action === 'increase') {
+                if ($program->kuota !== null) {
+                    $program->increment('kuota');
+                }
+                if ($program->sisa_kursi !== null) {
+                    $program->increment('sisa_kursi');
+                }
+            }
+
+            Log::info('Program quota updated via Customer model', [
+                'customer_code' => $this->code,
+                'program_code' => $programCode,
+                'action' => $action,
+                'remaining_quota' => $program->kuota ?? 'N/A',
+                'remaining_seats' => $program->sisa_kursi ?? 'N/A'
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to update program quota via Customer model: ' . $e->getMessage(), [
+                'customer_code' => $this->code ?? 'unknown',
+                'program_code' => $programCode,
+                'action' => $action
+            ]);
+        }
     }
 }
