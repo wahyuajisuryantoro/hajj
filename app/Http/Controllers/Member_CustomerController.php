@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\City;
 use App\Models\Cabang;
+use App\Models\Jamaah;
 use App\Models\Program;
 use App\Models\Regency;
 use App\Models\Customer;
@@ -102,7 +103,7 @@ class Member_CustomerController extends Controller
     public function show($id)
     {
         $title = "Detail Customer";
-        // Ambil data customer dengan relasi
+
         $customer = Customer::with(['mitra', 'cabang', 'program', 'city', 'province'])
             ->findOrFail($id);
 
@@ -412,7 +413,7 @@ class Member_CustomerController extends Controller
         }
     }
 
-    // JSON API
+
     public function getAllDataCustomer(Request $request)
     {
         $codeMitra = $request->header('code_mitra');
@@ -516,6 +517,16 @@ class Member_CustomerController extends Controller
                 $jamaahCode = $customer->jamaah->code;
                 Log::info("Found jamaah code: $jamaahCode");
             }
+            $programInfo = null;
+            if ($customer->program) {
+                $programInfo = [
+                    'code' => $customer->program->code,
+                    'name' => $customer->program->name,
+                    'sisa_kursi' => $customer->program->sisa_kursi,
+                    'status' => $customer->program->status,
+                    'is_available' => $customer->program->status === 'active' && $customer->program->sisa_kursi > 0
+                ];
+            }
 
             $transformedData = [
                 'id' => $customer->id,
@@ -535,11 +546,12 @@ class Member_CustomerController extends Controller
                 'picture_ktp' => $customer->picture_ktp,
                 'code_program' => $customer->code_program,
                 'code_jamaah' => $jamaahCode,
+                'note' => $customer->note,
                 'category' => $customer->category ? ['code' => $customer->category->code, 'name' => $customer->category->name] : null,
                 'cabang' => $customer->cabang ? ['code' => $customer->cabang->code, 'name' => $customer->cabang->name] : null,
                 'city' => $customer->city ? ['id' => $customer->city->id, 'name' => $customer->city->name] : null,
                 'province' => $customer->province ? ['id' => $customer->province->id, 'name' => $customer->province->name] : null,
-                'program' => $customer->program ? ['code' => $customer->program->code, 'name' => $customer->program->name] : null,
+                'program' => $programInfo,
                 'mitra' => $customer->mitra ? ['code' => $customer->mitra->code, 'name' => $customer->mitra->name] : null,
                 'jamaah' => $customer->jamaah ? [
                     'code' => $customer->jamaah->code,
@@ -590,7 +602,62 @@ class Member_CustomerController extends Controller
             $city = City::all();
             $province = Province::all();
             $category = CustomerCategories::all();
-            $program = Program::all();
+
+
+            $program = Program::where('status', 'active')
+                ->where('sisa_kursi', '>', 0)
+                ->get();
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Data relasi berhasil diambil',
+                'cabang' => $cabang,
+                'city' => $city,
+                'province' => $province,
+                'category' => $category,
+                'program' => $program
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Gagal mengambil data relasi: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function getRelationalDataForEdit($customerId)
+    {
+        try {
+            $customer = Customer::findOrFail($customerId);
+            $currentProgramCode = $customer->code_program;
+
+            $cabang = Cabang::all();
+            $city = City::all();
+            $province = Province::all();
+            $category = CustomerCategories::all();
+
+
+
+            $program = Program::where(function ($query) use ($currentProgramCode) {
+
+                $query->where('status', 'active')
+                    ->where('sisa_kursi', '>', 0);
+            })
+                ->orWhere(function ($query) use ($currentProgramCode) {
+
+                    if ($currentProgramCode) {
+                        $query->where('code', $currentProgramCode);
+                    }
+                })
+                ->distinct()
+                ->get();
+
+
+            $program = $program->map(function ($prog) use ($currentProgramCode) {
+                $prog->is_current = $prog->code === $currentProgramCode;
+                $prog->is_available = $prog->status === 'active' && $prog->sisa_kursi > 0;
+                return $prog;
+            });
 
             return response()->json([
                 'status' => 'success',
@@ -761,6 +828,8 @@ class Member_CustomerController extends Controller
                 'picture_ktp.image' => 'File foto KTP harus berupa gambar',
                 'picture_ktp.mimes' => 'Format foto KTP harus jpeg, png, atau jpg',
                 'picture_ktp.max' => 'Ukuran foto KTP maksimal 2MB',
+                'status_prospek.in' => 'Status prospek harus cold, warm, atau hot',
+                'status_jamaah.in' => 'Status jamaah harus active atau nonactive',
             ];
 
             $validator = Validator::make($request->all(), [
@@ -777,8 +846,10 @@ class Member_CustomerController extends Controller
                 'code_program' => 'nullable|exists:programs,code',
                 'birth_date' => 'nullable|date',
                 'picture_ktp' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
-
+                'status_prospek' => 'nullable|in:cold,warm,hot',
+                'status_jamaah' => 'nullable|in:active,nonactive',
             ], $messages);
+
             $oldProgramCode = $customer->code_program;
             $newProgramCode = $request->code_program;
             if ($newProgramCode && $newProgramCode !== $oldProgramCode) {
@@ -797,6 +868,7 @@ class Member_CustomerController extends Controller
                     ], 400);
                 }
             }
+
             if ($validator->fails()) {
                 return response()->json([
                     'status' => 'error',
@@ -805,7 +877,6 @@ class Member_CustomerController extends Controller
             }
 
             DB::beginTransaction();
-
             $picture_ktp = $customer->picture_ktp;
             if ($request->hasFile('picture_ktp')) {
                 if ($customer->picture_ktp) {
@@ -813,7 +884,8 @@ class Member_CustomerController extends Controller
                 }
                 $picture_ktp = UploadFile::file($request->file('picture_ktp'), 'customer/ktp');
             }
-
+            $oldStatusJamaah = $customer->status_jamaah;
+            $newStatusJamaah = $request->status_jamaah ?? $customer->status_jamaah;
 
             $customer->update([
                 'name' => $request->name,
@@ -829,14 +901,20 @@ class Member_CustomerController extends Controller
                 'birth_date' => $request->birth_date,
                 'sex' => $request->sex,
                 'picture_ktp' => $picture_ktp,
+                'status_prospek' => $request->status_prospek,
+                'status_jamaah' => $newStatusJamaah,
             ]);
+
+
+            if ($request->has('status_jamaah') && $oldStatusJamaah !== $newStatusJamaah) {
+                $this->handleJamaahStatusChange($customer, $oldStatusJamaah, $newStatusJamaah);
+            }
+
+
             if ($oldProgramCode !== $newProgramCode) {
-                // Jika program lama ada, tambahkan quota kembali
                 if ($oldProgramCode) {
                     $this->updateProgramQuota($oldProgramCode, 'increase');
                 }
-
-                // Jika program baru ada, kurangi quota
                 if ($newProgramCode) {
                     if (!$this->updateProgramQuota($newProgramCode, 'decrease')) {
                         throw new \Exception('Gagal mengurangi sisa kursi program baru');
@@ -845,15 +923,19 @@ class Member_CustomerController extends Controller
             }
 
             DB::commit();
-
             $updatedCustomer = Customer::with([
                 'category:code,name',
                 'cabang:code,name',
                 'city:id,name',
                 'province:id,name',
                 'program:code,name',
-                'mitra:code,name'
+                'mitra:code,name',
+                'jamaah'
             ])->findOrFail($id);
+            $jamaahCode = null;
+            if ($updatedCustomer->status_jamaah === 'active' && $updatedCustomer->jamaah) {
+                $jamaahCode = $updatedCustomer->jamaah->code;
+            }
 
             $transformedData = [
                 'id' => $updatedCustomer->id,
@@ -873,12 +955,21 @@ class Member_CustomerController extends Controller
                 'picture_ktp' => $updatedCustomer->picture_ktp,
                 'job' => $updatedCustomer->job,
                 'sex' => $updatedCustomer->sex,
+                'note' => $updatedCustomer->note,
+                'code_jamaah' => $jamaahCode,
                 'category' => $updatedCustomer->category ? ['code' => $updatedCustomer->category->code, 'name' => $updatedCustomer->category->name] : null,
                 'cabang' => $updatedCustomer->cabang ? ['code' => $updatedCustomer->cabang->code, 'name' => $updatedCustomer->cabang->name] : null,
                 'city' => $updatedCustomer->city ? ['id' => $updatedCustomer->city->id, 'name' => $updatedCustomer->city->name] : null,
                 'province' => $updatedCustomer->province ? ['id' => $updatedCustomer->province->id, 'name' => $updatedCustomer->province->name] : null,
                 'program' => $updatedCustomer->program ? ['code' => $updatedCustomer->program->code, 'name' => $updatedCustomer->program->name] : null,
                 'mitra' => $updatedCustomer->mitra ? ['code' => $updatedCustomer->mitra->code, 'name' => $updatedCustomer->mitra->name] : null,
+                'jamaah' => $updatedCustomer->jamaah ? [
+                    'code' => $updatedCustomer->jamaah->code,
+                    'status_payment' => $updatedCustomer->jamaah->status_payment,
+                    'status_berangkat' => $updatedCustomer->jamaah->status_berangkat,
+                    'tahun_jamaah' => $updatedCustomer->jamaah->tahun_jamaah,
+                    'status' => $updatedCustomer->jamaah->status,
+                ] : null,
             ];
 
             return response()->json([
@@ -894,7 +985,6 @@ class Member_CustomerController extends Controller
             ], 500);
         }
     }
-
     private function updateProgramQuota($programCode, $action = 'decrease')
     {
         try {
@@ -931,6 +1021,133 @@ class Member_CustomerController extends Controller
                 'action' => $action
             ]);
             return false;
+        }
+    }
+    private function handleJamaahStatusChange($customer, $oldStatus, $newStatus)
+    {
+        try {
+            Log::info('Handling jamaah status change', [
+                'customer_code' => $customer->code,
+                'old_status' => $oldStatus,
+                'new_status' => $newStatus
+            ]);
+
+
+            if ($newStatus === 'active' && $oldStatus !== 'active') {
+
+
+                $existingJamaah = Jamaah::where('code_customer', $customer->code)
+                    ->where('status', 'active')
+                    ->first();
+
+                Log::info('Checking existing jamaah', [
+                    'customer_code' => $customer->code,
+                    'existing_jamaah' => $existingJamaah ? $existingJamaah->code : 'none'
+                ]);
+
+                if (!$existingJamaah) {
+
+                    $lastJamaahCode = DB::table('jamaahs')
+                        ->whereNotNull('code')
+                        ->orderBy('code', 'desc')
+                        ->lockForUpdate()
+                        ->value('code');
+
+
+                    $lastNumber = $lastJamaahCode ? intval(substr($lastJamaahCode, 1)) : 0;
+                    $newNumber = $lastNumber + 1;
+                    $newJamaahCode = 'J' . str_pad($newNumber, 10, '0', STR_PAD_LEFT);
+
+
+                    while (DB::table('jamaahs')->where('code', $newJamaahCode)->exists()) {
+                        $newNumber++;
+                        $newJamaahCode = 'J' . str_pad($newNumber, 10, '0', STR_PAD_LEFT);
+                    }
+
+                    Log::info('Generated jamaah code', [
+                        'customer_code' => $customer->code,
+                        'jamaah_code' => $newJamaahCode
+                    ]);
+
+
+                    $jamaahData = [
+                        'code' => $newJamaahCode,
+                        'name' => $customer->name,
+                        'phone' => $customer->phone,
+                        'email' => $customer->email,
+                        'job' => $customer->job,
+                        'city_program' => null,
+                        'desc' => $customer->note,
+                        'date_program' => null,
+                        'value' => null,
+                        'total_payment' => 0,
+                        'code_city' => $customer->code_city,
+                        'code_province' => $customer->code_province,
+                        'code_customer' => $customer->code,
+                        'code_program' => $customer->code_program,
+                        'code_cabang' => $customer->code_cabang,
+                        'code_mitra' => $customer->code_mitra,
+                        'status_payment' => 'dp',
+                        'status_berangkat' => 'belum',
+                        'picture_profile' => null,
+                        'picture_ktp' => $customer->picture_ktp,
+                        'status' => 'active',
+                        'tahun_jamaah' => date('Y'),
+                    ];
+
+                    Log::info('Creating jamaah with data', [
+                        'jamaah_data' => $jamaahData
+                    ]);
+
+
+                    $jamaah = Jamaah::create($jamaahData);
+
+                    if ($jamaah) {
+                        Log::info('Jamaah created successfully', [
+                            'customer_code' => $customer->code,
+                            'jamaah_code' => $jamaah->code,
+                            'jamaah_id' => $jamaah->id
+                        ]);
+
+
+                        $customer->update(['status' => 'jamaah']);
+                    } else {
+                        Log::error('Failed to create jamaah', [
+                            'customer_code' => $customer->code
+                        ]);
+                        throw new \Exception('Gagal membuat data jamaah');
+                    }
+                } else {
+                    Log::info('Jamaah already exists, activating it', [
+                        'customer_code' => $customer->code,
+                        'jamaah_code' => $existingJamaah->code
+                    ]);
+
+
+                    $existingJamaah->update(['status' => 'active']);
+                }
+            }
+
+
+            if ($newStatus === 'nonactive' && $oldStatus === 'active') {
+                $affectedRows = Jamaah::where('code_customer', $customer->code)
+                    ->where('status', 'active')
+                    ->update(['status' => 'nonactive']);
+
+                Log::info('Jamaah deactivated from customer update', [
+                    'customer_code' => $customer->code,
+                    'affected_rows' => $affectedRows,
+                    'status_jamaah' => $newStatus
+                ]);
+            }
+        } catch (\Exception $e) {
+            Log::error('Error handling jamaah status change: ' . $e->getMessage(), [
+                'customer_code' => $customer->code,
+                'old_status' => $oldStatus,
+                'new_status' => $newStatus,
+                'trace' => $e->getTraceAsString()
+            ]);
+            throw $e;
         }
     }
 }

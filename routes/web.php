@@ -59,6 +59,8 @@ Route::prefix('api')->group(function () {
     Route::post('customer/store', [Member_CustomerController::class, 'storeCustomerApi']);
     Route::put('/customer/update/{id}', [Member_CustomerController::class, 'updateCustomerApi']);
     Route::get('customer/{id}', [Member_CustomerController::class, 'getDetailCustomer']);
+    Route::put('/customer/{id}/status-jamaah', [Member_CustomerController::class, 'updateStatusJamaahFromCustomer']);
+    Route::get('/customer/{id}/relation', [Member_CustomerController::class, 'getRelationalDataForEdit']);
 
     // Jamaah Routes
     Route::get('jamaah', [Member_JamaahController::class, 'getAllDataJamaah']);
