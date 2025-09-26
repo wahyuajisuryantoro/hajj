@@ -3,12 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\Mitra;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use RealRashid\SweetAlert\Facades\Alert;
+use Illuminate\Support\Facades\Validator;
 
 class Member_AuthController extends Controller
 {
@@ -103,12 +104,22 @@ class Member_AuthController extends Controller
             'name' => 'required',
             'phone' => 'required',
             'sex' => 'required|in:L,P',
+            'code_mitra' => 'nullable|exists:mitras,code',
         ]);
 
         $lastMitra = Mitra::orderBy('code', 'desc')->first();
         $lastCode = $lastMitra ? $lastMitra->code : '0000000000';
         $newCode = $this->generateNewCode($lastCode);
+        $referralMitra = null;
+        if ($request->filled('code_mitra')) {
+            $referralMitra = Mitra::where('code', $request->code_mitra)->first();
 
+            if (!$referralMitra) {
+                return response()->json([
+                    'message' => 'Code mitra tidak valid'
+                ], 422);
+            }
+        }
         $mitra = new Mitra();
         $mitra->code = $newCode;
         $mitra->username = $request->username;
@@ -116,7 +127,7 @@ class Member_AuthController extends Controller
         $mitra->referral_code = $this->generateReferralCode();
         $mitra->code_category = null;
         $mitra->code_cabang = null;
-        $mitra->code_mitra = null;
+        $mitra->code_mitra = $request->filled('code_mitra') ? $request->code_mitra : null;
         $mitra->level = 'mitra';
         $mitra->name = $request->name;
         $mitra->NIK = null;
@@ -134,21 +145,51 @@ class Member_AuthController extends Controller
         $mitra->picture_profile = null;
         $mitra->picture_ktp = null;
         $mitra->status = 'nonactive';
-
         $mitra->save();
-
-        return response()->json(['message' => 'Registrasi mitra berhasil'], 201);
+        return response()->json([
+            'message' => 'Registrasi mitra berhasil',
+            'data' => [
+                'code' => $mitra->code,
+                'username' => $mitra->username,
+                'name' => $mitra->name,
+                'code_mitra' => $referralMitra ? $referralMitra->name : null
+            ]
+        ], 201);
     }
 
     public function register(Request $request)
     {
-        $request->validate([
+        $validator = Validator::make($request->all(), [
             'username' => 'required|unique:mitras,username',
             'password' => 'required|min:8',
             'name' => 'required',
             'sex' => 'required|in:L,P',
             'phone' => 'required|unique:mitras,phone',
+            'code_mitra' => 'nullable|string',
         ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => $validator->errors()->first(),
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $referralMitra = null;
+        $codeMitraValue = null;
+
+        if ($request->filled('code_mitra')) {
+            $referralMitra = Mitra::where('code', $request->code_mitra)->first();
+
+            if (!$referralMitra) {
+                return response()->json([
+                    'message' => 'Code mitra tidak valid atau tidak ditemukan',
+                    'status' => 'error',
+                ], 422);
+            }
+
+            $codeMitraValue = $request->code_mitra;
+        }
 
         $lastCode = DB::table('mitras')
             ->whereNotNull('code')
@@ -164,11 +205,12 @@ class Member_AuthController extends Controller
             $newCode = str_pad($newCodeNumber, 10, '0', STR_PAD_LEFT);
         }
 
-        Mitra::create([
+        $mitra = Mitra::create([
             'code' => $newCode,
             'username' => $request->username,
             'password' => bcrypt($request->password),
             'referral_code' => strtolower(Str::random(7)),
+            'code_mitra' => $codeMitraValue, 
             'level' => 'mitra',
             'name' => $request->name,
             'sex' => $request->sex,
@@ -179,13 +221,20 @@ class Member_AuthController extends Controller
         return response()->json([
             'message' => 'Mitra berhasil didaftarkan',
             'status' => 'success',
-        ]);
+            'data' => [
+                'code' => $mitra->code,
+                'username' => $mitra->username,
+                'name' => $mitra->name,
+                'code_mitra' => $mitra->code_mitra,
+                'referral_by' => $referralMitra ? $referralMitra->name : null,
+            ]
+        ], 201);
     }
 
     private function generateNewCode($lastCode)
     {
         $numericPart = substr($lastCode, -10);
-        $newNumericPart = str_pad((int)$numericPart + 1, 10, '0', STR_PAD_LEFT);
+        $newNumericPart = str_pad((int) $numericPart + 1, 10, '0', STR_PAD_LEFT);
         return $newNumericPart;
     }
 

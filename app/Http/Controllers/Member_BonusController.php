@@ -17,20 +17,20 @@ class Member_BonusController extends Controller
         $loggedInMitra = Auth::guard('mitra')->user();
         $loggedInCode = $loggedInMitra->code ?? null;
 
-        // Hitung total rekap bonus (debit)
+
         $totalBonus = Ujroh::getTotalBonus($loggedInCode);
 
-        // Hitung total komisi yang ditransfer (credit)
+
         $totalTransfer = Ujroh::getTotalTransfer($loggedInCode);
 
-        // Hitung saldo
+
         $saldo = $totalBonus - $totalTransfer;
 
-        // Untuk statistik perbandingan minggu lalu
+
         $comparison = Ujroh::getWeeklyComparison($loggedInCode);
         $bonusPercentage = $comparison['percentage'];
 
-        // Data untuk tabel
+
         if (request()->ajax()) {
             $data = Ujroh::with('jamaah')
                 ->select('ujrohs.*')
@@ -69,33 +69,34 @@ class Member_BonusController extends Controller
         ));
     }
 
-    // JSON API
-  public function getSaldoBonus(Request $request) {
+
+    public function getSaldoBonus(Request $request)
+    {
         $codeMitra = $request->header('code_mitra');
-        
-        // 1. Total Bonus (jumlah dari debit)
+
+
         $totalBonus = Ujroh::where('code_mitra', $codeMitra)
             ->where('status', 'debit')
             ->sum('value');
-            
-        // 2. Bonus Diterima (jumlah dari kredit)
+
+
         $bonusDiterima = Ujroh::where('code_mitra', $codeMitra)
             ->where('status', 'credit')
             ->sum('value');
-            
-        // 3. Saldo (Total Bonus - Bonus Diterima)
+
+
         $saldo = $totalBonus - $bonusDiterima;
-        
-        // 4. TAMPILKAN SEMUA KATEGORI UJROH + JUMLAH YANG DIDAPAT USER
+
+
         $allCategories = UjrohCategory::all();
-        
-        $bonusPerKategori = $allCategories->map(function($category) use ($codeMitra, $totalBonus) {
-            // Hitung berapa yang didapat user dari kategori ini
+
+        $bonusPerKategori = $allCategories->map(function ($category) use ($codeMitra, $totalBonus) {
+
             $totalValue = Ujroh::where('code_mitra', $codeMitra)
                 ->where('status', 'debit')
                 ->where('code_category', $category->code)
                 ->sum('value');
-            
+
             $totalCount = Ujroh::where('code_mitra', $codeMitra)
                 ->where('status', 'debit')
                 ->where('code_category', $category->code)
@@ -111,8 +112,8 @@ class Member_BonusController extends Controller
                 'percentage' => $totalBonus > 0 ? round(($totalValue / $totalBonus) * 100, 1) : 0
             ];
         });
-        
-        // 5. Riwayat/mutasi dengan sumber customer dan valuenya
+
+
         $mutasi = Ujroh::leftJoin('ujroh_categories', 'ujrohs.code_category', '=', 'ujroh_categories.code')
             ->leftJoin('customers', 'ujrohs.code_customer', '=', 'customers.code')
             ->where('ujrohs.code_mitra', $codeMitra)
@@ -135,7 +136,7 @@ class Member_BonusController extends Controller
             ->orderBy('ujrohs.tanggal_transaksi', 'desc')
             ->orderBy('ujrohs.created_at', 'desc')
             ->get()
-            ->map(function($item) {
+            ->map(function ($item) {
                 return [
                     'code' => $item->code,
                     'category_code' => $item->code_category,
@@ -151,18 +152,18 @@ class Member_BonusController extends Controller
                     'status_label' => $item->status === 'debit' ? 'Bonus Masuk' : 'Bonus Keluar',
                     'desc' => $item->desc ?? 'Tidak ada deskripsi',
                     'tanggal_transaksi' => $item->tanggal_transaksi,
-                    'formatted_date' => $item->tanggal_transaksi ? 
+                    'formatted_date' => $item->tanggal_transaksi ?
                         \Carbon\Carbon::parse($item->tanggal_transaksi)->format('d/m/Y') : '-',
-                    'formatted_date_time' => $item->tanggal_transaksi ? 
+                    'formatted_date_time' => $item->tanggal_transaksi ?
                         \Carbon\Carbon::parse($item->tanggal_transaksi)->format('d/m/Y H:i') : '-',
                     'sisa_saldo' => (int) $item->sisa_saldo,
                     'formatted_sisa_saldo' => 'Rp ' . number_format($item->sisa_saldo ?? 0, 0, ',', '.'),
-                    'created_at' => $item->created_at ? 
+                    'created_at' => $item->created_at ?
                         \Carbon\Carbon::parse($item->created_at)->format('d/m/Y H:i:s') : '-'
                 ];
             });
-        
-        // Summary data
+
+
         $summary = [
             'total_transaksi' => $mutasi->count(),
             'total_debit' => $mutasi->where('status', 'debit')->count(),
@@ -171,7 +172,7 @@ class Member_BonusController extends Controller
             'kategori_aktif' => $bonusPerKategori->where('total_count', '>', 0)->count(),
             'transaksi_terbaru' => $mutasi->first()
         ];
-        
+
         return response()->json([
             'status' => true,
             'message' => 'Data saldo bonus berhasil diambil',
