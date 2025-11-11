@@ -6,6 +6,7 @@ use App\Models\Mitra;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use RealRashid\SweetAlert\Facades\Alert;
@@ -98,63 +99,102 @@ class Member_AuthController extends Controller
 
     public function registerApi(Request $request)
     {
-        $request->validate([
-            'username' => 'required|unique:mitras',
+        $validator = Validator::make($request->all(), [
+            'username' => 'required|unique:mitras,username',
             'password' => 'required|min:8',
             'name' => 'required',
-            'phone' => 'required',
+            'phone' => 'required|unique:mitras,phone',
             'sex' => 'required|in:L,P',
-            'code_mitra' => 'nullable|exists:mitras,code',
+            'address' => 'nullable|string',
+            'province_id' => 'nullable|exists:provinces,id',  
+            'regency_id' => 'nullable|exists:regencies,id',  
+            'sponsor_username' => 'nullable|string',
         ]);
 
-        $lastMitra = Mitra::orderBy('code', 'desc')->first();
-        $lastCode = $lastMitra ? $lastMitra->code : '0000000000';
-        $newCode = $this->generateNewCode($lastCode);
-        $referralMitra = null;
-        if ($request->filled('code_mitra')) {
-            $referralMitra = Mitra::where('code', $request->code_mitra)->first();
-
-            if (!$referralMitra) {
-                return response()->json([
-                    'message' => 'Code mitra tidak valid'
-                ], 422);
-            }
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => $validator->errors()->first(),
+                'errors' => $validator->errors()
+            ], 422);
         }
-        $mitra = new Mitra();
-        $mitra->code = $newCode;
-        $mitra->username = $request->username;
-        $mitra->password = Hash::make($request->password);
-        $mitra->referral_code = $this->generateReferralCode();
-        $mitra->code_category = null;
-        $mitra->code_cabang = null;
-        $mitra->code_mitra = $request->filled('code_mitra') ? $request->code_mitra : null;
-        $mitra->level = 'mitra';
-        $mitra->name = $request->name;
-        $mitra->NIK = null;
-        $mitra->sex = $request->sex;
-        $mitra->birth_place = null;
-        $mitra->birth_date = null;
-        $mitra->address = null;
-        $mitra->code_city = null;
-        $mitra->code_province = null;
-        $mitra->phone = $request->phone;
-        $mitra->email = null;
-        $mitra->bank = null;
-        $mitra->bank_number = null;
-        $mitra->bank_name = null;
-        $mitra->picture_profile = null;
-        $mitra->picture_ktp = null;
-        $mitra->status = 'nonactive';
-        $mitra->save();
-        return response()->json([
-            'message' => 'Registrasi mitra berhasil',
-            'data' => [
-                'code' => $mitra->code,
-                'username' => $mitra->username,
-                'name' => $mitra->name,
-                'code_mitra' => $referralMitra ? $referralMitra->name : null
-            ]
-        ], 201);
+
+        DB::beginTransaction();
+        try {
+            $lastCode = DB::table('mitras')
+                ->whereNotNull('code')
+                ->orderBy('code', 'desc')
+                ->lockForUpdate()
+                ->value('code');
+
+            $newCodeNumber = ($lastCode ? intval($lastCode) + 1 : 1);
+            $newCode = str_pad($newCodeNumber, 10, '0', STR_PAD_LEFT);
+
+            while (DB::table('mitras')->where('code', $newCode)->exists()) {
+                $newCodeNumber++;
+                $newCode = str_pad($newCodeNumber, 10, '0', STR_PAD_LEFT);
+            }
+
+            $codeMitra = null;
+            $sponsorUsername = null;
+            $sponsorMitra = null;
+
+            if ($request->filled('sponsor_username')) {
+                $sponsorMitra = Mitra::where('username', $request->sponsor_username)
+                    ->where('status', 'active')
+                    ->first();
+
+                if (!$sponsorMitra) {
+                    return response()->json([
+                        'message' => 'Username sponsor tidak ditemukan atau tidak aktif'
+                    ], 422);
+                }
+
+                $codeMitra = $sponsorMitra->code;
+                $sponsorUsername = $sponsorMitra->username;
+            }
+
+            $mitra = Mitra::create([
+                'code' => $newCode,
+                'username' => $request->username,
+                'password' => bcrypt($request->password),
+                'referral_code' => strtolower(Str::random(7)),
+                'sponsor' => $sponsorUsername,
+                'code_mitra' => $codeMitra,
+                'level' => 'mitra',
+                'name' => $request->name,
+                'sex' => $request->sex,
+                'phone' => $request->phone,
+                'address' => $request->address,
+                'code_province' => $request->province_id, 
+                'code_city' => $request->regency_id,      
+                'status' => 'nonactive',
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Mitra berhasil didaftarkan',
+                'status' => 'success',
+                'data' => [
+                    'code' => $mitra->code,
+                    'username' => $mitra->username,
+                    'name' => $mitra->name,
+                    'address' => $mitra->address,
+                    'province_id' => $mitra->code_province,
+                    'regency_id' => $mitra->code_city,
+                    'sponsor' => $mitra->sponsor,
+                    'sponsor_name' => $sponsorMitra ? $sponsorMitra->name : null,
+                    'code_mitra' => $mitra->code_mitra,
+                ]
+            ], 201);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Registration Error: ' . $e->getMessage());
+            return response()->json([
+                'message' => 'Terjadi kesalahan sistem',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
     public function register(Request $request)
@@ -210,7 +250,7 @@ class Member_AuthController extends Controller
             'username' => $request->username,
             'password' => bcrypt($request->password),
             'referral_code' => strtolower(Str::random(7)),
-            'code_mitra' => $codeMitraValue, 
+            'code_mitra' => $codeMitraValue,
             'level' => 'mitra',
             'name' => $request->name,
             'sex' => $request->sex,

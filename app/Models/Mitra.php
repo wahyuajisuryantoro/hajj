@@ -35,6 +35,7 @@ class Mitra extends Authenticatable
         'username',
         'password',
         'referral_code',
+        'sponsor',
         'code_category',
         'code_cabang',
         'code_mitra',

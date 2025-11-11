@@ -255,66 +255,180 @@ class Member_AccountController extends Controller
 
     // JSON
 
+    public function getProfileApi(Request $request)
+    {
+        try {
+            $codeMitra = $request->header('code_mitra') ?? $request->input('code_mitra');
+
+            if (!$codeMitra) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Code mitra tidak ditemukan'
+                ], 400);
+            }
+
+            $mitra = Mitra::with([
+                'province:id,name',
+                'city:id,name'
+            ])
+                ->where('code', $codeMitra)
+                ->select([
+                    'code',
+                    'username',
+                    'name',
+                    'phone',
+                    'sex',
+                    'address',
+                    'code_province',
+                    'code_city',
+                    'picture_profile',
+                    'picture_ktp'
+                ])
+                ->first();
+
+            if (!$mitra) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Mitra tidak ditemukan'
+                ], 404);
+            }
+
+
+            $response = [
+                'code' => $mitra->code,
+                'username' => $mitra->username,
+                'name' => $mitra->name,
+                'phone' => $mitra->phone,
+                'sex' => $mitra->sex,
+                'address' => $mitra->address,
+                'province' => $mitra->province ? [
+                    'id' => $mitra->province->id,
+                    'name' => $mitra->province->name
+                ] : null,
+                'city' => $mitra->city ? [
+                    'id' => $mitra->city->id,
+                    'name' => $mitra->city->name
+                ] : null,
+                'picture_profile' => $mitra->picture_profile,
+                'picture_ktp' => $mitra->picture_ktp,
+            ];
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Data mitra berhasil diambil',
+                'data' => $response
+            ], 200);
+
+        } catch (\Exception $e) {
+            Log::error('Error getting profile: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat mengambil data',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
     public function updateProfileApi(Request $request)
     {
         try {
-
             $request->validate([
                 'code_mitra' => 'required|exists:mitras,code'
             ]);
 
             $mitra = Mitra::where('code', $request->code_mitra)->first();
 
+            if (!$mitra) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Mitra tidak ditemukan'
+                ], 404);
+            }
+
             if ($request->has('name')) {
                 $request->validate(['name' => 'string|max:255']);
                 $mitra->name = $request->name;
             }
+
 
             if ($request->has('phone')) {
                 $request->validate(['phone' => 'string|max:20']);
                 $mitra->phone = $request->phone;
             }
 
-            if ($request->has('email')) {
-                $request->validate(['email' => 'email|max:255']);
-                $mitra->email = $request->email;
-            }
-
-            if ($request->has('birth_place')) {
-                $request->validate(['birth_place' => 'string|max:255']);
-                $mitra->birth_place = $request->birth_place;
-            }
-
-            if ($request->has('birth_date')) {
-                $request->validate(['birth_date' => 'date']);
-                $mitra->birth_date = $request->birth_date;
+            if ($request->has('sex')) {
+                $request->validate(['sex' => 'in:L,P']);
+                $mitra->sex = $request->sex;
             }
 
             if ($request->has('address')) {
-                $request->validate(['address' => 'string|max:500']);
+                $request->validate(['address' => 'nullable|string|max:500']);
                 $mitra->address = $request->address;
             }
 
+            if ($request->has('province_id')) {
+                $request->validate(['province_id' => 'nullable|exists:provinces,id']);
+                $mitra->code_province = $request->province_id;
+            }
+
+            if ($request->has('regency_id')) {
+                $request->validate(['regency_id' => 'nullable|exists:regencies,id']);
+                $mitra->code_city = $request->regency_id;
+            }
             if ($request->hasFile('picture_profile')) {
-                $this->profilePictureService->uploadProfilePicture($request->file('picture_profile'), $mitra);
+                $request->validate(['picture_profile' => 'image|mimes:jpeg,png,jpg|max:2048']);
+                if ($mitra->picture_profile) {
+                    UploadFile::delete('mitra/profile', $mitra->picture_profile);
+                }
+                $picture_profile = UploadFile::file($request->file('picture_profile'), 'mitra/profile');
+                $mitra->picture_profile = $picture_profile;
+            }
+            if ($request->hasFile('picture_ktp')) {
+                $request->validate(['picture_ktp' => 'image|mimes:jpeg,png,jpg|max:2048']);
+                if ($mitra->picture_ktp) {
+                    UploadFile::delete('mitra/ktp', $mitra->picture_ktp);
+                }
+                $picture_ktp = UploadFile::file($request->file('picture_ktp'), 'mitra/ktp');
+                $mitra->picture_ktp = $picture_ktp;
             }
             $mitra->save();
+            $mitra->load(['province:id,name', 'city:id,name']);
+            $response = [
+                'code' => $mitra->code,
+                'username' => $mitra->username,
+                'name' => $mitra->name,
+                'phone' => $mitra->phone,
+                'sex' => $mitra->sex,
+                'address' => $mitra->address,
+                'province' => $mitra->province ? [
+                    'id' => $mitra->province->id,
+                    'name' => $mitra->province->name
+                ] : null,
+                'city' => $mitra->city ? [
+                    'id' => $mitra->city->id,
+                    'name' => $mitra->city->name
+                ] : null,
+                'picture_profile' => $mitra->picture_profile,
+                'picture_ktp' => $mitra->picture_ktp,
+            ];
 
             return response()->json([
                 'success' => true,
-                'message' => 'Profile updated successfully',
-                'data' => $mitra->fresh()
-            ]);
+                'message' => 'Profile berhasil diupdate',
+                'data' => $response
+            ], 200);
+
         } catch (ValidationException $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Validation error',
+                'message' => 'Validasi gagal',
                 'errors' => $e->errors()
             ], 422);
         } catch (\Exception $e) {
+            Log::error('Error updating profile: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => 'An error occurred',
+                'message' => 'Terjadi kesalahan saat update profile',
                 'error' => $e->getMessage()
             ], 500);
         }

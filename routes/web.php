@@ -37,7 +37,7 @@ Route::prefix('api')->group(function () {
     Route::get('/regency/{provinceId}', [RegionController::class, 'getRegenciesByProvince']);
     // Auth routes
     Route::post('/login', [Member_AuthController::class, 'loginApi']);
-    Route::post('/register', [Member_AuthController::class, 'register']);
+    Route::post('/register', [Member_AuthController::class, 'registerApi']);
 
     // Program routes
     Route::get('/programs', [Member_ProgramController::class, 'getPrograms']);
@@ -74,6 +74,7 @@ Route::prefix('api')->group(function () {
     Route::get('ujroh', [Member_BonusController::class, 'getSaldoBonus']);
 
     // Account Routes
+    Route::get('profile', [Member_AccountController::class, 'getProfileApi']);
     Route::post('update-profile', [Member_AccountController::class, 'updateProfileApi']);
     Route::post('update-password', [Member_AccountController::class, 'updatePasswordApi']);
 
@@ -131,7 +132,6 @@ Route::middleware(['mitra.auth'])->group(function () {
     });
 
     // Akun routes
-    // Rute Akun
     Route::prefix('account')->group(function () {
         Route::get('settings', [Member_AccountController::class, 'settings'])->name('account.settings');
         Route::get('info', [Member_AccountController::class, 'info'])->name('account.info');
